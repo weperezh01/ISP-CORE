@@ -1,0 +1,121 @@
+:put "=== MIKROTIK CCR2116 ROUTER 22 MONITOREO ==="
+  :local routerID "22"
+  :local routerName "Mikrotik OLT"
+  :local backendURL "https://wellnet-rd.com:444/api/connection-events-history/receive"
+  :local timestamp ([/system clock get date] . " " . [/system clock get time])
+  :local routerUptime [/system resource get uptime]
+
+  :put ("Router: " . $routerName . " - CCR2116-12G-4S+")
+  :put ("RouterOS: 7.15 ARM64")
+  :put ("Timestamp: " . $timestamp)
+  :put ("Uptime: " . $routerUptime)
+
+  :local arpIds [/ip arp find dynamic=yes]
+  :local totalArp [:len $arpIds]
+  :put ("Total entradas ARP dinamicas: " . $totalArp)
+
+  :local activeCount 0
+  :local processedCount 0
+  :local connectionsList ""
+  :local first true
+  :local batchSize 30
+
+  :if ($totalArp > 0) do={
+      :local counter 0
+      :foreach arpId in=$arpIds do={
+          :if ($counter < $batchSize) do={
+              :local clientIP [/ip arp get $arpId address]
+              :local clientMAC [/ip arp get $arpId mac-address]
+              :local interfaceName [/ip arp get $arpId interface]
+              :local arpStatus [/ip arp get $arpId status]
+
+              :local isOnline false
+
+              :if ($arpStatus="reachable" || $arpStatus="delay" || $arpStatus="probe") do={
+                  :set isOnline true
+              }
+
+              :if (!$isOnline) do={
+                  :local bridgeHosts [/interface bridge host find mac-address=$clientMAC]
+                  :if ([:len $bridgeHosts] > 0) do={
+                      :local hostEntry [:pick $bridgeHosts 0]
+                      :local hostAge [/interface bridge host get $hostEntry age]
+                      :if ($hostAge < "00:01:30") do={ :set isOnline true }
+                  }
+              }
+
+              :local connectionStatus "offline"
+              :if ($isOnline) do={
+                  :set connectionStatus "online"
+                  :set activeCount ($activeCount + 1)
+              }
+
+              :if (!$first) do={ :set connectionsList ($connectionsList . ",") }
+              :set first false
+
+              :local connectionData "{"
+              :set connectionData ($connectionData . "\"queue_name\":\"" . $clientIP . "@" . $routerName . "\",")
+              :set connectionData ($connectionData . "\"status\":\"" . $connectionStatus . "\",")
+              :set connectionData ($connectionData . "\"target\":\"" . $clientIP . "/32\",")
+              :set connectionData ($connectionData . "\"mac_address\":\"" . $clientMAC . "\",")
+              :set connectionData ($connectionData . "\"arp_status\":\"" . $arpStatus . "\",")
+              :set connectionData ($connectionData . "\"interface\":\"" . $interfaceName . "\"")
+              :set connectionData ($connectionData . "}")
+
+              :set connectionsList ($connectionsList . $connectionData)
+              :set processedCount ($processedCount + 1)
+              :set counter ($counter + 1)
+          }
+      }
+  } else={
+      :put "No se encontraron entradas ARP dinamicas"
+  }
+
+  :local jsonPayload "{"
+  :set jsonPayload ($jsonPayload . "\"router_id\":\"" . $routerID . "\",")
+  :set jsonPayload ($jsonPayload . "\"router_name\":\"" . $routerName . "\",")
+  :set jsonPayload ($jsonPayload . "\"timestamp\":\"" . $timestamp . "\",")
+  :set jsonPayload ($jsonPayload . "\"uptime\":\"" . $routerUptime . "\",")
+  :set jsonPayload ($jsonPayload . "\"router_model\":\"CCR2116-12G-4S+\",")
+  :set jsonPayload ($jsonPayload . "\"routeros_version\":\"7.15\",")
+  :set jsonPayload ($jsonPayload . "\"active_connections\":" . $activeCount . ",")
+  :set jsonPayload ($jsonPayload . "\"total_connections\":" . $processedCount . ",")
+  :set jsonPayload ($jsonPayload . "\"batch_size\":" . $batchSize . ",")
+  :set jsonPayload ($jsonPayload . "\"connections\":[" . $connectionsList . "]}")
+
+  :put ("Conexiones procesadas: " . $processedCount . " de " . $totalArp)
+  :put ("Conexiones activas: " . $activeCount)
+  :put ("Tamaño del JSON: " . [:len $jsonPayload] . " bytes")
+
+  :local sendResult false
+  :do {
+      /tool fetch \
+          url=$backendURL \
+          http-method=post \
+          http-header-field="Content-Type: application/json" \
+          http-data=$jsonPayload \
+          mode=https \
+          tls-version=1.2 \
+          keep-result=no \
+          timeout=10s
+
+      :set sendResult true
+      :put ">>> DATOS ENVIADOS EXITOSAMENTE AL BACKEND <<<"
+
+  } on-error={
+      :put ">>> ERROR: FALLO AL ENVIAR DATOS AL BACKEND <<<"
+      :put "URL: https://wellnet-rd.com:444/api/connection-events-history/receive"
+      :put "Verificar conectividad HTTPS"
+  }
+
+  :put ""
+  :put "=================== RESUMEN FINAL ==================="
+  :put ("Router: " . $routerName . " (CCR2116) - ID: " . $routerID)
+  :put ("RouterOS: 7.15 ARM64 - Build: 2024-05-29")
+  :put ("Uptime del sistema: " . $routerUptime)
+  :put ("Timestamp: " . $timestamp)
+  :put ("Total ARP entries: " . $totalArp)
+  :put ("Conexiones procesadas: " . $processedCount)
+  :put ("Conexiones activas: " . $activeCount)
+  :put ("Envio al backend: " . [:tostr $sendResult])
+  :put "=================== COMPLETADO ==================="

@@ -1,0 +1,44 @@
+buildscript {
+    ext {
+        buildToolsVersion = "34.0.0"
+        minSdkVersion = 21
+        compileSdkVersion = 34
+        targetSdkVersion = 34
+        ndkVersion = "25.1.8937393"
+        kotlinVersion = "1.8.0"
+    }
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+    dependencies {
+        // implementation project(':react-native-bluetooth-escpos-printer')
+        classpath("com.android.tools.build:gradle")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+        // implementation project('react-native-bluetooth-escpos-printer')
+        // implementation project: ("react-native-bluetooth-escpos-printer")
+    }
+}
+
+apply plugin: "com.facebook.react.rootproject"
+
+// android {
+//     ...
+//     signingConfigs {
+//         release {
+//             storeFile file('ruta/a/tu/keystore.keystore')
+//             storePassword 'contraseña-keystore'
+//             keyAlias 'alias-key'
+//             keyPassword 'contraseña-key'
+//         }
+//     }
+//     buildTypes {
+//         release {
+//             signingConfig signingConfigs.release
+//             minifyEnabled true // Optimización
+//             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+//         }
+//     }
+// }

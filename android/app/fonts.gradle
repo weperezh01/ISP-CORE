@@ -1,0 +1,105 @@
+/**
+ * Register font asset source folder
+ * This registers the folder where the font files will be copied.
+ */
+android {
+    sourceSets {
+        main {
+            // Ensure the fonts are included as assets
+            assets.srcDirs += file("$buildDir/intermediates/ReactNativeVectorIcons")
+        }
+    }
+}
+
+/**
+ * Task to copy icon font files
+ */
+afterEvaluate {
+    def config = project.hasProperty("vectoricons") ? project.vectoricons : [:]; // Ensure config is a map, not a string.
+    def iconFontsDir = config.iconFontNames ?: "../../node_modules/react-native-vector-icons/Fonts"; // Default fonts directory
+    def iconFontNames = config.iconFontNames ?: [ "*.ttf" ]; // Default to all .ttf files
+
+    // Create a task to copy font files
+    def fontCopyTask = tasks.create(
+        name: "copyReactNativeVectorIconFonts",
+        type: Copy) {
+        description = "Copy vector icon fonts for React Native Vector Icons"
+        into "$buildDir/intermediates/ReactNativeVectorIcons/fonts" // Target directory for copied fonts
+
+        iconFontNames.each { fontName ->
+            from(iconFontsDir) {
+                include(fontName) // Include all specified font files
+            }
+        }
+    }
+
+    // Ensure the task is run before asset generation
+    android.applicationVariants.all { def variant ->
+        def targetName = variant.name.capitalize()
+
+        // Add dependency to Lint tasks if they exist
+        def lintVitalAnalyzeTask = tasks.findByName("lintVitalAnalyze${targetName}")
+        if (lintVitalAnalyzeTask) {
+            lintVitalAnalyzeTask.dependsOn(fontCopyTask)
+        }
+
+        // Add dependency to lint report tasks
+        def generateReportTask = tasks.findByName("generate${targetName}LintVitalReportModel")
+        if (generateReportTask) {
+            generateReportTask.dependsOn(fontCopyTask)
+        }
+
+        // Ensure fonts are copied before assets are generated
+        def generateAssetsTask = tasks.findByName("generate${targetName}Assets")
+        if (generateAssetsTask) {
+            generateAssetsTask.dependsOn(fontCopyTask)
+        }
+    }
+}
+
+
+
+
+// /**
+//  * Register font asset source folder
+//  */
+// android.sourceSets.main.assets.srcDirs += file("$buildDir/intermediates/ReactNativeVectorIcons")
+
+// /**
+//  * Task to copy icon font files
+//  */
+// afterEvaluate {
+//     def config = project.hasProperty("vectoricons") ? project.vectoricons : [];
+//     def iconFontsDir = config.iconFontsDir ?: "../../node_modules/react-native-vector-icons/Fonts";
+//     def iconFontNames = config.iconFontNames ?: [ "*.ttf" ];
+
+//     def fontCopyTask = tasks.create(
+//         name: "copyReactNativeVectorIconFonts",
+//         type: Copy) {
+//         description = "copy vector icon fonts."
+//         into "$buildDir/intermediates/ReactNativeVectorIcons/fonts"
+
+//         iconFontNames.each { fontName ->
+//             from(iconFontsDir) {
+//                 include(fontName)
+//             }
+//         }
+//     }
+
+//     android.applicationVariants.all { def variant ->
+//         def targetName = variant.name.capitalize()
+//         def lintVitalAnalyzeTask = tasks.findByName("lintVitalAnalyze${targetName}")
+      
+//         if (lintVitalAnalyzeTask) {
+//         lintVitalAnalyzeTask.dependsOn(fontCopyTask)
+//         }
+
+//         def generateReportTask = tasks.findByName("generate${targetName}LintVitalReportModel")
+//         if (generateReportTask) {
+//             generateReportTask.dependsOn(fontCopyTask)
+//         }
+      
+//         def generateAssetsTask = tasks.findByName("generate${targetName}Assets")
+//         generateAssetsTask.dependsOn(fontCopyTask)
+//       }
+// }
