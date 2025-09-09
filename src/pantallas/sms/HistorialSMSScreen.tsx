@@ -41,6 +41,7 @@ interface Filtros {
 const HistorialSMSScreen = ({ navigation, route }) => {
   const { isDarkMode } = useTheme();
   const styles = getStyles(isDarkMode);
+  const { ispId } = (route.params as any) || {};
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -86,25 +87,40 @@ const HistorialSMSScreen = ({ navigation, route }) => {
 
   const cargarHistorial = async () => {
     try {
+      console.log('🔄 [SMS History] Iniciando carga de historial...', { ispId, currentPage });
       setLoading(true);
-      const userData = await AsyncStorage.getItem('@loginData');
-      const user = userData ? JSON.parse(userData) : null;
-      const token = user?.token;
       
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: itemsPorPagina.toString(),
+        ...(ispId ? { isp_id: String(ispId) } : {}),
       });
 
-      const response = await fetch(`${API_BASE}/sms/historial?${params}`, {
+      const url = `${API_BASE}/sms/historial?${params}`;
+      console.log('🔗 [SMS History] Cargando historial:', url);
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          ...(ispId ? { 'X-ISP-ID': String(ispId) } : {}),
         },
       });
 
+      console.log('📥 [SMS History] Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [SMS History] Error response:', errorText.slice(0, 300));
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
       const data = await response.json();
+      console.log('✅ [SMS History] Datos cargados:', { 
+        historial: data.historial?.length || 0, 
+        total: data.total,
+        currentPage 
+      });
       
       if (data.success) {
         if (currentPage === 1) {
@@ -114,11 +130,12 @@ const HistorialSMSScreen = ({ navigation, route }) => {
         }
         setTotalPages(Math.ceil((data.total || 0) / itemsPorPagina));
       } else {
+        console.error('❌ [SMS History] API returned success=false:', data.message);
         Alert.alert('Error', data.message || 'No se pudo cargar el historial');
       }
     } catch (error) {
-      console.error('Error cargando historial:', error);
-      Alert.alert('Error', 'No se pudo cargar el historial');
+      console.error('❌ [SMS History] Error cargando historial:', error);
+      Alert.alert('Error', `No se pudo cargar el historial: ${error?.message || 'Error desconocido'}`);
     } finally {
       setLoading(false);
     }
@@ -201,13 +218,12 @@ const HistorialSMSScreen = ({ navigation, route }) => {
           text: 'Exportar',
           onPress: async () => {
             try {
+              console.log('📤 [SMS History] Iniciando exportación CSV...', { filtros, ispId });
               setExporting(true);
-              const userData = await AsyncStorage.getItem('@loginData');
-      const user = userData ? JSON.parse(userData) : null;
-      const token = user?.token;
               
               const params = new URLSearchParams({
                 formato: 'csv',
+                ...(ispId && { isp_id: String(ispId) }),
                 ...(filtros.fechaDesde && { fecha_desde: filtros.fechaDesde }),
                 ...(filtros.fechaHasta && { fecha_hasta: filtros.fechaHasta }),
                 ...(filtros.estado && { estado: filtros.estado }),
@@ -215,21 +231,30 @@ const HistorialSMSScreen = ({ navigation, route }) => {
                 ...(filtros.tipoMensaje && { tipo_mensaje: filtros.tipoMensaje }),
               });
 
-              const response = await fetch(`${API_BASE}/sms/historial/export?${params}`, {
+              const url = `${API_BASE}/sms/historial/export?${params}`;
+              console.log('🔗 [SMS History] URL de exportación:', url);
+
+              const response = await fetch(url, {
                 method: 'GET',
                 headers: {
-                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                  ...(ispId ? { 'X-ISP-ID': String(ispId) } : {}),
                 },
               });
 
+              console.log('📥 [SMS History] Response status export:', response.status);
+
               if (response.ok) {
+                console.log('✅ [SMS History] Exportación exitosa');
                 Alert.alert('Éxito', 'El archivo CSV ha sido generado y está disponible para descarga');
               } else {
+                const errorText = await response.text();
+                console.error('❌ [SMS History] Error en exportación:', errorText.slice(0, 300));
                 Alert.alert('Error', 'No se pudo generar el archivo CSV');
               }
             } catch (error) {
-              console.error('Error exportando:', error);
-              Alert.alert('Error', 'No se pudo exportar el historial');
+              console.error('❌ [SMS History] Error exportando:', error);
+              Alert.alert('Error', `No se pudo exportar el historial: ${error?.message || 'Error desconocido'}`);
             } finally {
               setExporting(false);
             }

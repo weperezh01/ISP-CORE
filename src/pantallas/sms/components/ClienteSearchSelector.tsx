@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import {StyleSheet} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import CheckBox from '@react-native-community/checkbox';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Cliente {
@@ -38,6 +39,10 @@ interface ClienteSearchSelectorProps {
   };
 }
 
+interface ClienteConEstado extends Cliente {
+  habilitado?: boolean;
+}
+
 const API_BASE = 'https://wellnet-rd.com:444/api';
 
 const ClienteSearchSelector: React.FC<ClienteSearchSelectorProps> = ({
@@ -50,6 +55,7 @@ const ClienteSearchSelector: React.FC<ClienteSearchSelectorProps> = ({
   const [clientesBusqueda, setClientesBusqueda] = useState<Cliente[]>([]);
   const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
   const [mostrarResultados, setMostrarResultados] = useState(false);
+  const [estadosClientes, setEstadosClientes] = useState<{[key: number]: boolean}>({});
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const animatedHeight = useRef(new Animated.Value(0)).current;
 
@@ -62,8 +68,26 @@ const ClienteSearchSelector: React.FC<ClienteSearchSelectorProps> = ({
       cliente =>
         !clientesDelFiltro.some(cf => cf.id_cliente === cliente.id_cliente),
     );
-    return [...clientesDelFiltro, ...clientesIndividuales];
+    const clientesCombinados = [...clientesDelFiltro, ...clientesIndividuales];
+    
+    // Crear un Map para eliminar duplicados de forma más robusta
+    const clientesMap = new Map<number, Cliente>();
+    clientesCombinados.forEach(cliente => {
+      if (!clientesMap.has(cliente.id_cliente)) {
+        clientesMap.set(cliente.id_cliente, cliente);
+      }
+    });
+    
+    return Array.from(clientesMap.values());
   }, [filtroGrupo, clientesSeleccionados]);
+
+  // Obtener clientes realmente habilitados para envío
+  const clientesHabilitados = React.useMemo(() => {
+    return clientesVisibles.filter(cliente => {
+      const estado = estadosClientes[cliente.id_cliente];
+      return estado !== false; // Por defecto true, solo false si explícitamente deshabilitado
+    });
+  }, [clientesVisibles, estadosClientes]);
 
   // Limpiar debounce al desmontar
   useEffect(() => {
@@ -73,6 +97,27 @@ const ClienteSearchSelector: React.FC<ClienteSearchSelectorProps> = ({
       }
     };
   }, []);
+
+  // Notificar cambios en clientes habilitados al componente padre
+  const prevClientesHabilitadosRef = useRef<Cliente[]>([]);
+  
+  useEffect(() => {
+    // Solo notificar si la lista realmente cambió
+    const clientesActuales = clientesHabilitados;
+    const clientesAnteriores = prevClientesHabilitadosRef.current;
+    
+    // Comparar si cambió el contenido de la lista
+    const cambio = clientesActuales.length !== clientesAnteriores.length ||
+      clientesActuales.some((cliente, index) => {
+        return !clientesAnteriores[index] || 
+               clientesAnteriores[index].id_cliente !== cliente.id_cliente;
+      });
+    
+    if (cambio) {
+      prevClientesHabilitadosRef.current = [...clientesActuales];
+      onClientesSeleccionados(clientesActuales);
+    }
+  }, [clientesVisibles, estadosClientes]);
 
   // Buscar clientes con debounce
   useEffect(() => {
@@ -153,9 +198,18 @@ const ClienteSearchSelector: React.FC<ClienteSearchSelectorProps> = ({
         c => c.id_cliente !== cliente.id_cliente,
       );
       onClientesSeleccionados(nuevosSeleccionados);
+      // Limpiar estado individual
+      const nuevosEstados = { ...estadosClientes };
+      delete nuevosEstados[cliente.id_cliente];
+      setEstadosClientes(nuevosEstados);
     } else {
       // Seleccionar cliente individual
       onClientesSeleccionados([...clientesSeleccionados, cliente]);
+      // Habilitarlo por defecto
+      setEstadosClientes(prev => ({
+        ...prev,
+        [cliente.id_cliente]: true
+      }));
     }
 
     setBusqueda('');
@@ -163,7 +217,22 @@ const ClienteSearchSelector: React.FC<ClienteSearchSelectorProps> = ({
     Keyboard.dismiss();
   };
 
+  const toggleClienteIndividual = (clienteId: number) => {
+    setEstadosClientes(prev => ({
+      ...prev,
+      [clienteId]: !prev[clienteId] // Alterna entre true/false, si no existe será true
+    }));
+  };
+
   const seleccionarTodosVisibles = () => {
+    // Habilitar todos los clientes visibles
+    const nuevosEstados = { ...estadosClientes };
+    clientesVisibles.forEach(cliente => {
+      nuevosEstados[cliente.id_cliente] = true;
+    });
+    setEstadosClientes(nuevosEstados);
+
+    // Agregar clientes no seleccionados a la lista
     const clientesNoSeleccionados = clientesVisibles.filter(
       cliente =>
         !clientesSeleccionados.some(cs => cs.id_cliente === cliente.id_cliente),
@@ -175,11 +244,12 @@ const ClienteSearchSelector: React.FC<ClienteSearchSelectorProps> = ({
   };
 
   const deseleccionarTodosVisibles = () => {
-    const idsVisibles = clientesVisibles.map(c => c.id_cliente);
-    const clientesMantenidos = clientesSeleccionados.filter(
-      cliente => !idsVisibles.includes(cliente.id_cliente),
-    );
-    onClientesSeleccionados(clientesMantenidos);
+    // Deshabilitar todos los clientes visibles
+    const nuevosEstados = { ...estadosClientes };
+    clientesVisibles.forEach(cliente => {
+      nuevosEstados[cliente.id_cliente] = false;
+    });
+    setEstadosClientes(nuevosEstados);
   };
 
   const eliminarClienteSeleccionado = (clienteId: number) => {
@@ -187,10 +257,20 @@ const ClienteSearchSelector: React.FC<ClienteSearchSelectorProps> = ({
       c => c.id_cliente !== clienteId,
     );
     onClientesSeleccionados(nuevosSeleccionados);
+    
+    // Limpiar estado individual
+    const nuevosEstados = { ...estadosClientes };
+    delete nuevosEstados[clienteId];
+    setEstadosClientes(nuevosEstados);
   };
 
   const estaSeleccionado = (clienteId: number) => {
     return clientesSeleccionados.some(c => c.id_cliente === clienteId);
+  };
+
+  const estaHabilitado = (clienteId: number) => {
+    const estado = estadosClientes[clienteId];
+    return estado !== false; // Por defecto true, solo false si explícitamente deshabilitado
   };
 
   const renderClienteBusqueda = ({item}: {item: Cliente}) => {
@@ -201,53 +281,180 @@ const ClienteSearchSelector: React.FC<ClienteSearchSelectorProps> = ({
     if (item.pasaporte) infoAdicional.push(`Pasaporte: ${item.pasaporte}`);
     if (item.telefono2) infoAdicional.push(`Tel2: ${item.telefono2}`);
 
+    const seleccionado = estaSeleccionado(item.id_cliente);
+    
+    const handleCheckboxChange = () => {
+      seleccionarClienteIndividual(item);
+    };
+
     return (
-      <TouchableOpacity
-        style={styles.clienteItem}
-        onPress={() => seleccionarClienteIndividual(item)}>
-        <View style={styles.clienteInfo}>
-          <View style={styles.clienteHeader}>
-            <Text style={styles.clienteNombre}>{item.nombre_completo}</Text>
-            <Text style={styles.clienteId}>ID: {item.id_cliente}</Text>
+      <View style={[styles.clienteBusquedaItem, seleccionado && styles.clienteItemSelected]}>
+        <TouchableOpacity
+          style={styles.clienteItemContent}
+          onPress={handleCheckboxChange}
+          activeOpacity={0.7}>
+          <View style={styles.clienteAvatarContainer}>
+            <View style={[styles.clienteAvatar, seleccionado && styles.clienteAvatarSelected]}>
+              <Icon 
+                name="person" 
+                size={20} 
+                color={seleccionado ? '#ffffff' : isDarkMode ? '#ffffff' : '#2196f3'} 
+              />
+            </View>
           </View>
-          <Text style={styles.clienteTelefono}>{item.telefono1}</Text>
-          {item.direccion_ipv4 && (
-            <Text style={styles.clienteIp}>IP: {item.direccion_ipv4}</Text>
-          )}
-          {infoAdicional.length > 0 && (
-            <Text style={styles.clienteInfoAdicional}>
-              {infoAdicional.join(' • ')}
-            </Text>
-          )}
+          <View style={styles.clienteInfo}>
+            <View style={styles.clienteHeader}>
+              <Text style={[styles.clienteNombre, seleccionado && styles.clienteNombreSelected]}>
+                {item.nombre_completo}
+              </Text>
+              <View style={[styles.clienteIdBadge, seleccionado && styles.clienteIdBadgeSelected]}>
+                <Text style={[styles.clienteIdText, seleccionado && styles.clienteIdTextSelected]}>
+                  #{item.id_cliente}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.clienteContactInfo}>
+              <Icon name="phone" size={14} color="#666" />
+              <Text style={styles.clienteTelefono}>{item.telefono1}</Text>
+              {item.direccion_ipv4 && (
+                <>
+                  <Icon name="public" size={14} color="#2196f3" style={{marginLeft: 8}} />
+                  <Text style={styles.clienteIp}>{item.direccion_ipv4}</Text>
+                </>
+              )}
+            </View>
+            {infoAdicional.length > 0 && (
+              <Text style={styles.clienteInfoAdicional}>
+                {infoAdicional.join(' • ')}
+              </Text>
+            )}
+          </View>
+        </TouchableOpacity>
+        <View style={styles.checkboxContainer}>
+          <CheckBox
+            value={seleccionado}
+            onValueChange={handleCheckboxChange}
+            tintColors={{
+              true: '#28a745',
+              false: isDarkMode ? '#666666' : '#cccccc'
+            }}
+            boxType="square"
+            onCheckColor="#ffffff"
+            onFillColor="#28a745"
+            onTintColor="#28a745"
+            style={styles.checkbox}
+          />
         </View>
-        <Icon
-          name={
-            estaSeleccionado(item.id_cliente)
-              ? 'check-circle'
-              : 'add-circle-outline'
-          }
-          size={24}
-          color={estaSeleccionado(item.id_cliente) ? '#28a745' : '#2196f3'}
-        />
-      </TouchableOpacity>
+      </View>
     );
   };
 
-  const renderClienteSeleccionado = ({item}: {item: Cliente}) => (
-    <View style={styles.clienteSeleccionadoItem}>
-      <View style={styles.clienteSeleccionadoInfo}>
-        <Text style={styles.clienteSeleccionadoNombre}>
-          {item.nombre_completo}
-        </Text>
-        <Text style={styles.clienteSeleccionadoTelefono}>{item.telefono1}</Text>
+  const renderClienteSeleccionado = ({item}: {item: Cliente}) => {
+    const esDeGrupo = !!filtroGrupo?.clientes?.some(
+      (c: any) => c.id_cliente === item.id_cliente,
+    );
+    const habilitado = estaHabilitado(item.id_cliente);
+
+    const handleToggleHabilitado = () => {
+      toggleClienteIndividual(item.id_cliente);
+    };
+
+    const handleEliminar = () => {
+      eliminarClienteSeleccionado(item.id_cliente);
+    };
+
+    return (
+      <View style={[
+        styles.clienteSeleccionadoItem, 
+        styles.clienteItemSelected,
+        !habilitado && styles.clienteItemDisabled
+      ]}>
+        <View style={styles.clienteItemContent}>
+          <View style={styles.clienteAvatarContainer}>
+            <View style={[
+              styles.clienteAvatarSmall, 
+              { 
+                backgroundColor: esDeGrupo ? '#38BDF8' : '#10B981',
+                opacity: habilitado ? 1 : 0.5
+              }
+            ]}>
+              <Icon 
+                name={esDeGrupo ? 'group' : 'person'} 
+                size={16} 
+                color="#ffffff" 
+              />
+            </View>
+          </View>
+          <View style={[styles.clienteSeleccionadoInfo, !habilitado && styles.infoDisabled]}>
+            <View style={styles.clienteSeleccionadoHeader}>
+              <Text style={[
+                styles.clienteSeleccionadoNombre,
+                !habilitado && styles.textDisabled
+              ]}>
+                {item.nombre_completo}
+              </Text>
+              <View
+                style={[
+                  styles.modernBadge,
+                  { 
+                    backgroundColor: esDeGrupo ? '#E0F2FE' : '#ECFDF5', 
+                    borderColor: esDeGrupo ? '#38BDF8' : '#10B981',
+                    opacity: habilitado ? 1 : 0.6
+                  },
+                ]}>
+                <Icon 
+                  name={esDeGrupo ? 'group' : 'person-add'} 
+                  size={12} 
+                  color={esDeGrupo ? '#0369A1' : '#047857'} 
+                />
+                <Text style={[styles.modernBadgeText, { color: esDeGrupo ? '#0369A1' : '#047857' }]}>
+                  {esDeGrupo ? 'Grupo' : 'Manual'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.clienteContactInfo}>
+              <Icon name="phone" size={12} color={habilitado ? "#666" : "#999"} />
+              <Text style={[
+                styles.clienteSeleccionadoTelefono,
+                !habilitado && styles.textDisabled
+              ]}>
+                {item.telefono1}
+              </Text>
+              <Text style={[
+                styles.clienteSeleccionadoId,
+                !habilitado && styles.textDisabled
+              ]}>
+                #{item.id_cliente}
+              </Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.clienteSeleccionadoActions}>
+          <CheckBox
+            value={habilitado}
+            onValueChange={handleToggleHabilitado}
+            tintColors={{
+              true: esDeGrupo ? '#38BDF8' : '#28a745',
+              false: isDarkMode ? '#666666' : '#cccccc'
+            }}
+            boxType="square"
+            onCheckColor="#ffffff"
+            onFillColor={habilitado ? (esDeGrupo ? '#38BDF8' : '#28a745') : (isDarkMode ? '#666666' : '#cccccc')}
+            onTintColor={habilitado ? (esDeGrupo ? '#38BDF8' : '#28a745') : (isDarkMode ? '#666666' : '#cccccc')}
+            style={styles.checkbox}
+          />
+          {!esDeGrupo && (
+            <TouchableOpacity
+              style={styles.modernEliminarButton}
+              onPress={handleEliminar}
+              activeOpacity={0.7}>
+              <Icon name="close" size={16} color="#dc3545" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
-      <TouchableOpacity
-        style={styles.eliminarButton}
-        onPress={() => eliminarClienteSeleccionado(item.id_cliente)}>
-        <Icon name="close" size={20} color="#dc3545" />
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -283,9 +490,9 @@ const ClienteSearchSelector: React.FC<ClienteSearchSelectorProps> = ({
           <FlatList
             data={clientesBusqueda}
             renderItem={renderClienteBusqueda}
-            keyExtractor={item => item.id_cliente.toString()}
+            keyExtractor={(item, index) => `busqueda_${item.id_cliente}_${index}`}
             showsVerticalScrollIndicator={false}
-            nestedScrollEnabled={true}
+            scrollEnabled={false}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Icon name="search-off" size={40} color="#888888" />
@@ -326,23 +533,22 @@ const ClienteSearchSelector: React.FC<ClienteSearchSelectorProps> = ({
           <FlatList
             data={clientesVisibles}
             renderItem={renderClienteSeleccionado}
-            keyExtractor={item => item.id_cliente.toString()}
+            keyExtractor={(item, index) => `visible_${item.id_cliente}_${index}`}
             showsVerticalScrollIndicator={false}
-            nestedScrollEnabled={true}
-            maxHeight={300}
+            scrollEnabled={false}
             style={styles.clientesVisiblesList}
           />
         </View>
       )}
 
       {/* Contador de seleccionados */}
-      {clientesSeleccionados.length > 0 && (
+      {clientesVisibles.length > 0 && (
         <View style={styles.contadorContainer}>
           <Icon name="people" size={20} color="#2196f3" />
           <Text style={styles.contadorText}>
-            {clientesSeleccionados.length} cliente
-            {clientesSeleccionados.length !== 1 ? 's' : ''} seleccionado
-            {clientesSeleccionados.length !== 1 ? 's' : ''}
+            {clientesHabilitados.length} de {clientesVisibles.length} cliente
+            {clientesVisibles.length !== 1 ? 's' : ''} habilitado
+            {clientesHabilitados.length !== 1 ? 's' : ''} para envío
           </Text>
         </View>
       )}
@@ -354,38 +560,43 @@ const getStyles = (isDarkMode: boolean) =>
   StyleSheet.create({
     container: {
       backgroundColor: isDarkMode ? '#2a2a2a' : '#ffffff',
-      borderRadius: 12,
-      padding: 16,
+      borderRadius: 16,
+      padding: 20,
       marginBottom: 16,
-      elevation: 2,
+      elevation: 4,
       shadowColor: '#000',
-      shadowOffset: {width: 0, height: 2},
-      shadowOpacity: 0.1,
-      shadowRadius: 2,
+      shadowOffset: {width: 0, height: 4},
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
     },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 16,
+      marginBottom: 20,
     },
     title: {
-      fontSize: 18,
+      fontSize: 20,
       fontWeight: 'bold',
-      color: isDarkMode ? '#ffffff' : '#333333',
-      marginLeft: 8,
+      color: isDarkMode ? '#ffffff' : '#1a1a1a',
+      marginLeft: 12,
     },
     searchContainer: {
-      marginBottom: 16,
+      marginBottom: 20,
     },
     searchInputContainer: {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: isDarkMode ? '#3a3a3a' : '#f8f9fa',
-      borderRadius: 25,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderWidth: 1,
-      borderColor: isDarkMode ? '#444444' : '#e0e0e0',
+      borderRadius: 30,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderWidth: 2,
+      borderColor: isDarkMode ? '#4a4a4a' : '#e8e9ea',
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: {width: 0, height: 2},
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
     },
     searchInput: {
       flex: 1,
@@ -395,19 +606,63 @@ const getStyles = (isDarkMode: boolean) =>
       marginRight: 8,
     },
     resultadosContainer: {
-      backgroundColor: isDarkMode ? '#1a1a1a' : '#f8f9fa',
-      borderRadius: 8,
-      marginBottom: 16,
+      backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+      borderRadius: 12,
+      marginBottom: 20,
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: isDarkMode ? '#333333' : '#e0e0e0',
+      borderColor: isDarkMode ? '#3a3a3a' : '#e8e9ea',
+      elevation: 3,
+      shadowColor: '#000',
+      shadowOffset: {width: 0, height: 2},
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
     },
-    clienteItem: {
+    // Nuevo estilo para búsqueda
+    clienteBusquedaItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: isDarkMode ? '#333333' : '#e0e0e0',
+      backgroundColor: isDarkMode ? '#2a2a2a' : '#ffffff',
+      padding: 16,
+      marginHorizontal: 8,
+      marginVertical: 4,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: isDarkMode ? '#404040' : '#e8e9ea',
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: {width: 0, height: 1},
+      shadowOpacity: 0.08,
+      shadowRadius: 2,
+    },
+    clienteItemContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    clienteAvatarContainer: {
+      marginRight: 12,
+    },
+    clienteAvatar: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: isDarkMode ? '#404040' : '#e3f2fd',
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: isDarkMode ? '#505050' : '#bbdefb',
+    },
+    clienteAvatarSelected: {
+      backgroundColor: '#2196f3',
+      borderColor: '#1976d2',
+    },
+    clienteAvatarSmall: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     clienteInfo: {
       flex: 1,
@@ -415,66 +670,124 @@ const getStyles = (isDarkMode: boolean) =>
     clienteHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      marginBottom: 4,
+      alignItems: 'center',
+      marginBottom: 6,
     },
     clienteNombre: {
       fontSize: 16,
       fontWeight: '600',
-      color: isDarkMode ? '#ffffff' : '#333333',
+      color: isDarkMode ? '#ffffff' : '#1a1a1a',
       flex: 1,
-      marginRight: 8,
+      marginRight: 12,
     },
-    clienteId: {
-      fontSize: 12,
-      fontWeight: '500',
-      color: '#2196f3',
+    clienteNombreSelected: {
+      color: isDarkMode ? '#ffffff' : '#1976d2',
+      fontWeight: '700',
+    },
+    clienteIdBadge: {
       backgroundColor: isDarkMode ? '#1a3a5a' : '#e3f2fd',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: isDarkMode ? '#2196f3' : '#bbdefb',
+    },
+    clienteIdBadgeSelected: {
+      backgroundColor: '#1976d2',
+      borderColor: '#0d47a1',
+    },
+    clienteIdText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: '#2196f3',
+    },
+    clienteIdTextSelected: {
+      color: '#ffffff',
+    },
+    clienteContactInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 4,
     },
     clienteTelefono: {
       fontSize: 14,
-      color: isDarkMode ? '#aaaaaa' : '#666666',
-      marginBottom: 2,
+      color: isDarkMode ? '#b0b0b0' : '#666666',
+      marginLeft: 6,
+      fontWeight: '500',
     },
     clienteIp: {
       fontSize: 12,
       color: '#2196f3',
-      marginBottom: 2,
+      marginLeft: 4,
+      fontWeight: '600',
     },
     clienteInfoAdicional: {
       fontSize: 11,
       color: isDarkMode ? '#999999' : '#777777',
       fontStyle: 'italic',
       lineHeight: 16,
+      marginTop: 4,
+    },
+    checkboxContainer: {
+      marginLeft: 16,
+      padding: 8,
+      backgroundColor: isDarkMode ? '#3a3a3a' : '#f8f9fa',
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: isDarkMode ? '#4a4a4a' : '#e0e0e0',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    checkbox: {
+      width: 22,
+      height: 22,
+      borderRadius: 4,
+    },
+    checkboxDisabled: {
+      opacity: 0.6,
+    },
+    clienteItemDisabled: {
+      backgroundColor: isDarkMode ? '#1a1a1a' : '#f5f5f5',
+      borderColor: isDarkMode ? '#333333' : '#d0d0d0',
+      opacity: 0.7,
+    },
+    infoDisabled: {
+      opacity: 0.6,
+    },
+    textDisabled: {
+      color: isDarkMode ? '#666666' : '#999999',
     },
     emptyContainer: {
       alignItems: 'center',
-      padding: 32,
+      padding: 40,
     },
     emptyText: {
       fontSize: 16,
       color: '#888888',
-      marginTop: 8,
+      marginTop: 12,
+      fontWeight: '500',
     },
     clientesVisiblesContainer: {
-      backgroundColor: isDarkMode ? '#1a3a5a' : '#e3f2fd',
-      borderRadius: 8,
-      padding: 12,
-      marginBottom: 16,
-      borderWidth: 1,
+      backgroundColor: isDarkMode ? '#1a3a5a' : '#f0f8ff',
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 20,
+      borderWidth: 2,
       borderColor: isDarkMode ? '#2196f3' : '#bbdefb',
+      elevation: 2,
+      shadowColor: '#2196f3',
+      shadowOffset: {width: 0, height: 2},
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
     },
     clientesVisiblesHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 12,
+      marginBottom: 16,
     },
     clientesVisiblesTitle: {
-      fontSize: 16,
+      fontSize: 18,
       fontWeight: 'bold',
       color: isDarkMode ? '#64b5f6' : '#1976d2',
     },
@@ -487,55 +800,123 @@ const getStyles = (isDarkMode: boolean) =>
       alignItems: 'center',
       backgroundColor: isDarkMode ? '#2a2a2a' : '#ffffff',
       paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 6,
+      paddingVertical: 8,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: isDarkMode ? '#444444' : '#e0e0e0',
+      elevation: 1,
+      shadowColor: '#000',
+      shadowOffset: {width: 0, height: 1},
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
     },
     accionMasivaText: {
       fontSize: 12,
       fontWeight: '600',
-      marginLeft: 4,
+      marginLeft: 6,
       color: isDarkMode ? '#ffffff' : '#333333',
     },
     clientesVisiblesList: {
-      maxHeight: 300,
+      flexGrow: 0,
+    },
+    clienteItemSelected: {
+      backgroundColor: isDarkMode ? '#0f2a1f' : '#f0fff4',
+      borderColor: '#10B981',
+      borderWidth: 2,
+      elevation: 3,
+      shadowColor: '#10B981',
+      shadowOffset: {width: 0, height: 2},
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
     },
     clienteSeleccionadoItem: {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: isDarkMode ? '#2a2a2a' : '#ffffff',
-      padding: 10,
-      marginBottom: 4,
-      borderRadius: 6,
+      padding: 12,
+      marginBottom: 8,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: isDarkMode ? '#444444' : '#e0e0e0',
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: {width: 0, height: 1},
+      shadowOpacity: 0.08,
+      shadowRadius: 2,
     },
     clienteSeleccionadoInfo: {
       flex: 1,
     },
+    clienteSeleccionadoHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 6,
+    },
     clienteSeleccionadoNombre: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '600',
-      color: isDarkMode ? '#ffffff' : '#333333',
-      marginBottom: 2,
+      color: isDarkMode ? '#ffffff' : '#1a1a1a',
+      flex: 1,
+      marginRight: 8,
     },
     clienteSeleccionadoTelefono: {
       fontSize: 12,
-      color: isDarkMode ? '#aaaaaa' : '#666666',
+      color: isDarkMode ? '#b0b0b0' : '#666666',
+      marginLeft: 4,
+      fontWeight: '500',
     },
-    eliminarButton: {
-      padding: 4,
+    clienteSeleccionadoId: {
+      fontSize: 11,
+      color: '#2196f3',
+      marginLeft: 'auto',
+      fontWeight: '600',
+      backgroundColor: isDarkMode ? '#1a3a5a' : '#e3f2fd',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    clienteSeleccionadoActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    modernEliminarButton: {
+      padding: 6,
+      borderRadius: 6,
+      backgroundColor: isDarkMode ? '#4d1f1f' : '#ffebee',
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: isDarkMode ? '#dc3545' : '#ffcdd2',
+    },
+    modernBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    modernBadgeText: {
+      fontSize: 11,
+      fontWeight: '600',
+      marginLeft: 4,
     },
     contadorContainer: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: isDarkMode ? '#1a3a1a' : '#e8f5e8',
-      padding: 12,
-      borderRadius: 8,
-      borderWidth: 1,
+      backgroundColor: isDarkMode ? '#1a4d2e' : '#e8f5e8',
+      padding: 16,
+      borderRadius: 12,
+      borderWidth: 2,
       borderColor: '#28a745',
+      elevation: 2,
+      shadowColor: '#28a745',
+      shadowOffset: {width: 0, height: 2},
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
     },
     contadorText: {
       fontSize: 16,

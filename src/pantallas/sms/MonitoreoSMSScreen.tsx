@@ -46,6 +46,7 @@ interface UltimoSMS {
 const MonitoreoSMSScreen = ({ navigation, route }) => {
   const { isDarkMode } = useTheme();
   const styles = getStyles(isDarkMode);
+  const { ispId } = (route.params as any) || {};
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -63,24 +64,19 @@ const MonitoreoSMSScreen = ({ navigation, route }) => {
 
   const cargarDatos = async () => {
     try {
+      console.log('🔄 [SMS Monitor] Iniciando carga de datos...', { ispId });
       setLoading(true);
-      const userData = await AsyncStorage.getItem('@loginData');
-      if (!userData) {
-        Alert.alert('Error', 'No se pudo obtener información del usuario');
-        return;
-      }
 
-      const user = JSON.parse(userData);
-      setUserIsp(user);
-
+      console.log('🚀 [SMS Monitor] Ejecutando llamadas a APIs en paralelo...');
       await Promise.all([
         cargarRecordatoriosPendientes(),
         cargarEstadisticas(),
         cargarUltimosSMS(),
       ]);
+      console.log('✅ [SMS Monitor] Todas las APIs completadas');
     } catch (error) {
-      console.error('Error cargando datos:', error);
-      Alert.alert('Error', 'No se pudieron cargar los datos');
+      console.error('❌ [SMS Monitor] Error cargando datos:', error);
+      Alert.alert('Error', `No se pudieron cargar los datos: ${error?.message || 'Error desconocido'}`);
     } finally {
       setLoading(false);
     }
@@ -88,67 +84,113 @@ const MonitoreoSMSScreen = ({ navigation, route }) => {
 
   const cargarRecordatoriosPendientes = async () => {
     try {
-      const userData = await AsyncStorage.getItem('@loginData');
-      const user = userData ? JSON.parse(userData) : null;
-      const token = user?.token;
-      const response = await fetch(`${API_BASE}/sms/recordatorios-pendientes`, {
+      const url = ispId 
+        ? `${API_BASE}/sms/recordatorios-pendientes?isp_id=${encodeURIComponent(String(ispId))}`
+        : `${API_BASE}/sms/recordatorios-pendientes`;
+      
+      console.log('🔗 [SMS Monitor] Cargando recordatorios pendientes:', url);
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          ...(ispId ? { 'X-ISP-ID': String(ispId) } : {}),
         },
       });
 
+      console.log('📥 [SMS Monitor] Response status recordatorios:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [SMS Monitor] Error response recordatorios:', errorText.slice(0, 300));
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
       const data = await response.json();
+      console.log('✅ [SMS Monitor] Recordatorios cargados:', data.recordatorios?.length || 0, 'items');
+      
       if (data.success) {
         setRecordatoriosPendientes(data.recordatorios || []);
+      } else {
+        console.error('❌ [SMS Monitor] API returned success=false for recordatorios:', data.message);
       }
     } catch (error) {
-      console.error('Error cargando recordatorios pendientes:', error);
+      console.error('❌ [SMS Monitor] Error cargando recordatorios pendientes:', error);
     }
   };
 
   const cargarEstadisticas = async () => {
     try {
-      const userData = await AsyncStorage.getItem('@loginData');
-      const user = userData ? JSON.parse(userData) : null;
-      const token = user?.token;
-      const response = await fetch(`${API_BASE}/sms/estadisticas`, {
+      const url = ispId 
+        ? `${API_BASE}/sms/estadisticas?isp_id=${encodeURIComponent(String(ispId))}`
+        : `${API_BASE}/sms/estadisticas`;
+      
+      console.log('🔗 [SMS Monitor] Cargando estadísticas:', url);
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          ...(ispId ? { 'X-ISP-ID': String(ispId) } : {}),
         },
       });
 
+      console.log('📥 [SMS Monitor] Response status estadísticas:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [SMS Monitor] Error response estadísticas:', errorText.slice(0, 300));
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
       const data = await response.json();
+      console.log('✅ [SMS Monitor] Estadísticas cargadas:', data.estadisticas);
+      
       if (data.success) {
         setEstadisticas(data.estadisticas);
+      } else {
+        console.error('❌ [SMS Monitor] API returned success=false for estadisticas:', data.message);
       }
     } catch (error) {
-      console.error('Error cargando estadísticas:', error);
+      console.error('❌ [SMS Monitor] Error cargando estadísticas:', error);
     }
   };
 
   const cargarUltimosSMS = async () => {
     try {
-      const userData = await AsyncStorage.getItem('@loginData');
-      const user = userData ? JSON.parse(userData) : null;
-      const token = user?.token;
-      const response = await fetch(`${API_BASE}/sms/historial?limit=10`, {
+      const baseUrl = `${API_BASE}/sms/historial?limit=10`;
+      const url = ispId 
+        ? `${baseUrl}&isp_id=${encodeURIComponent(String(ispId))}`
+        : baseUrl;
+      
+      console.log('🔗 [SMS Monitor] Cargando últimos SMS:', url);
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          ...(ispId ? { 'X-ISP-ID': String(ispId) } : {}),
         },
       });
 
+      console.log('📥 [SMS Monitor] Response status historial:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [SMS Monitor] Error response historial:', errorText.slice(0, 300));
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
       const data = await response.json();
+      console.log('✅ [SMS Monitor] Historial cargado:', data.historial?.length || 0, 'items');
+      
       if (data.success) {
         setUltimosSMS(data.historial || []);
+      } else {
+        console.error('❌ [SMS Monitor] API returned success=false for historial:', data.message);
       }
     } catch (error) {
-      console.error('Error cargando últimos SMS:', error);
+      console.error('❌ [SMS Monitor] Error cargando últimos SMS:', error);
     }
   };
 
@@ -164,16 +206,21 @@ const MonitoreoSMSScreen = ({ navigation, route }) => {
           onPress: async () => {
             try {
               setProcesando(true);
-              const userData = await AsyncStorage.getItem('@loginData');
-      const user = userData ? JSON.parse(userData) : null;
-      const token = user?.token;
-              const response = await fetch(`${API_BASE}/sms/procesar-recordatorios-diarios`, {
+              const url = ispId 
+                ? `${API_BASE}/sms/procesar-recordatorios-diarios?isp_id=${encodeURIComponent(String(ispId))}`
+                : `${API_BASE}/sms/procesar-recordatorios-diarios`;
+              
+              console.log('🚀 [SMS Monitor] Ejecutando recordatorios:', url);
+              
+              const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                  'Authorization': `Bearer ${token}`,
                   'Content-Type': 'application/json',
+                  ...(ispId ? { 'X-ISP-ID': String(ispId) } : {}),
                 },
               });
+              
+              console.log('📥 [SMS Monitor] Response status ejecutar:', response.status);
 
               const data = await response.json();
               if (data.success) {

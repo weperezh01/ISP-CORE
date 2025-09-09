@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
+  TextInput,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import {StyleSheet} from 'react-native';
@@ -107,6 +108,7 @@ const GroupSelector: React.FC<GroupSelectorProps> = ({
   const [oneLoadingLevel, setOneLoadingLevel] = useState<OneLevel | null>(null);
   const [oneCascadeAvailable, setOneCascadeAvailable] = useState<boolean | null>(null);
   const [oneError, setOneError] = useState<string | null>(null);
+  const [oneSearch, setOneSearch] = useState<Partial<Record<OneLevel, string>>>({});
 
   const getGruposDisponibles = () => {
     if (!tipoSeleccionado) return [];
@@ -488,57 +490,117 @@ const GroupSelector: React.FC<GroupSelectorProps> = ({
             <Text style={{ color: '#dc2626', marginBottom: 8 }}>{oneError}</Text>
           )}
 
-          {/* Chips de selección por nivel */}
+          {/* Bloques por nivel con botones siempre visibles */}
           {oneLevels.map((level, idx) => {
-            // Mostrar nivel inicial o cuando el anterior esté seleccionado
-            const canShow = idx === 0 || !!(oneFilters as any)[oneLevels[idx - 1]];
-            if (!canShow) return null;
+            const prevSelected = idx === 0 ? true : !!(oneFilters as any)[oneLevels[idx - 1]];
+            const enabled = prevSelected;
             const options = (oneOptions as any)[level] as Group[] | undefined;
+            const selectedValue = (oneFilters as any)[level] as string | undefined;
             return (
-              <View key={level} style={{ marginBottom: 8 }}>
-                <Text style={[styles.label, { marginBottom: 4 }]}>
-                  {level === 'provincia' ? 'Provincias' :
-                   level === 'municipio' ? 'Municipios' :
-                   level === 'distrito_municipal' ? 'Distritos municipales' :
-                   level === 'seccion' ? 'Secciones' :
-                   level === 'paraje' ? 'Parajes' : 'Sectores/Barrio'}
-                </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {(options || []).map(opt => {
-                    const selected = (oneFilters as any)[level] === opt.nombre;
-                    return (
-                      <TouchableOpacity
-                        key={`${level}-${opt.id}`}
-                        style={[styles.typeButton, selected && styles.typeButtonActive]}
-                        onPress={async () => {
-                          // Actualizar selección de este nivel y limpiar niveles siguientes
-                          setOneFilters(prev => {
-                            const next: any = { ...prev, [level]: opt.nombre };
-                            const nextIndex = idx + 1;
-                            for (let i = nextIndex; i < oneLevels.length; i++) {
-                              delete next[oneLevels[i]];
-                            }
-                            return next;
-                          });
-                          await previewOne();
-                          const nextLevel = oneLevels[idx + 1];
-                          if (nextLevel) {
-                            loadOneOptions(nextLevel);
-                          }
-                        }}
-                      >
-                        <Text style={[styles.typeButtonText, selected && styles.typeButtonTextActive]}>
-                          {opt.nombre} ({opt.cantidad_clientes})
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+              <View key={level} style={{ marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={[styles.label, { marginBottom: 4, opacity: enabled ? 1 : 0.5 }]}>
+                    {level === 'provincia' ? 'Provincia' :
+                     level === 'municipio' ? 'Municipio' :
+                     level === 'distrito_municipal' ? 'Distrito municipal' :
+                     level === 'seccion' ? 'Sección' :
+                     level === 'paraje' ? 'Paraje' : 'Sector/Barrio'}
+                    {selectedValue ? `: ${selectedValue}` : ''}
+                  </Text>
+                  {selectedValue && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        // Limpiar desde este nivel hacia abajo
+                        setOneFilters(prev => {
+                          const next: any = { ...prev };
+                          for (let i = idx; i < oneLevels.length; i++) delete next[oneLevels[i]];
+                          return next;
+                        });
+                        previewOne();
+                      }}
+                      style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 12, backgroundColor: '#fee2e2' }}
+                    >
+                      <Text style={{ color: '#dc2626', fontWeight: '600' }}>Limpiar</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {enabled ? (
+                  <>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {(((options || []) as Group[])
+                      .filter(opt => {
+                        const q = (oneSearch as any)[level]?.toString().toLowerCase() || '';
+                        return q.length === 0 || opt.nombre.toLowerCase().includes(q);
+                      }))
+                      .map(opt => {
+                      const selected = selectedValue === opt.nombre;
+                      return (
+                        <TouchableOpacity
+                          key={`${level}-${opt.id}`}
+                          style={[styles.typeButton, selected && styles.typeButtonActive]}
+                          onPress={async () => {
+                            setOneFilters(prev => {
+                              const next: any = { ...prev, [level]: opt.nombre };
+                              for (let i = idx + 1; i < oneLevels.length; i++) delete next[oneLevels[i]];
+                              return next;
+                            });
+                            // limpiar búsquedas de niveles siguientes
+                            setOneSearch(prev => {
+                              const n: any = { ...prev };
+                              for (let i = idx + 1; i < oneLevels.length; i++) delete n[oneLevels[i]];
+                              return n;
+                            });
+                            await previewOne();
+                            const nextLevel = oneLevels[idx + 1];
+                            if (nextLevel) loadOneOptions(nextLevel);
+                          }}
+                        >
+                          <Text style={[styles.typeButtonText, selected && styles.typeButtonTextActive]}>
+                            {opt.nombre} ({opt.cantidad_clientes})
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   {oneLoadingLevel === level && (
                     <View style={{ justifyContent: 'center', paddingHorizontal: 8 }}>
                       <ActivityIndicator size="small" color="#2196f3" />
                     </View>
                   )}
-                </ScrollView>
+                  {(!options || options.length === 0) && oneLoadingLevel !== level && (
+                    <TouchableOpacity
+                      style={[styles.typeButton, { minWidth: 120 }]}
+                      onPress={() => loadOneOptions(level)}
+                    >
+                      <Text style={styles.typeButtonText}>Cargar {level}</Text>
+                    </TouchableOpacity>
+                  )}
+                  </ScrollView>
+                  {/* Buscador por nivel */}
+                  {enabled && (options && options.length > 6) && (
+                  <View style={{ marginTop: 8 }}>
+                    <TextInput
+                      value={(oneSearch as any)[level] || ''}
+                      onChangeText={(t) => setOneSearch(prev => ({ ...prev, [level]: t }))}
+                      placeholder={`Filtrar ${level.replace('_',' ')}...`}
+                      placeholderTextColor={'#9CA3AF'}
+                      style={{
+                        height: 40,
+                        borderWidth: 1,
+                        borderColor: '#e0e0e0',
+                        borderRadius: 8,
+                        paddingHorizontal: 10,
+                        color: isDarkMode ? '#fff' : '#333',
+                        backgroundColor: isDarkMode ? '#2a2a2a' : '#fff',
+                      }}
+                    />
+                  </View>
+                )}
+                </>
+                ) : (
+                  <Text style={{ color: isDarkMode ? '#888' : '#aaa' }}>
+                    Selecciona {idx === 1 ? 'Provincia' : idx === 2 ? 'Municipio' : idx === 3 ? 'Distrito municipal' : idx === 4 ? 'Sección' : 'Paraje'} primero
+                  </Text>
+                )}
               </View>
             );
           })}
