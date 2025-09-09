@@ -1,5 +1,7 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../ThemeContext';
@@ -149,70 +151,98 @@ const MainScreen = () => {
         />
       </View> */}
       <View style={styles.container}>
-        <Text style={styles.title}>Pantalla Principal</Text>
-        <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('IspListScreen')}>
-          <Text style={styles.buttonText}>I. S. P. s</Text>
-        </TouchableOpacity>
-        {userRole === 'MEGA ADMINISTRADOR' && (
-          <TouchableOpacity 
-            style={styles.button} 
-            onPress={() => navigation.navigate('PlanManagementScreen')}
-          >
-            <Text style={styles.buttonText}>Gestión de Planes de Suscripción</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity 
-          style={styles.button} 
-          onPress={() => navigation.navigate('ServiciosAdicionalesScreen')}
+        {/* Encabezado con gradiente */}
+        <LinearGradient
+          colors={isDarkMode ? ['#1f2937', '#111827'] : ['#667eea', '#764ba2']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
         >
-          <Text style={styles.buttonText}>Servicios Adicionales</Text>
+          <View style={styles.headerContent}>
+            <Icon name="dashboard" size={28} color="rgba(255,255,255,0.9)" />
+            <View>
+              <Text style={styles.headerTitle}>Pantalla Principal</Text>
+              {nombreUsuario ? (
+                <Text style={styles.headerSubtitle}>Hola, {nombreUsuario}</Text>
+              ) : null}
+            </View>
+          </View>
+        </LinearGradient>
+
+        {/* Grid de acciones principales */}
+        <View style={styles.grid}>
+          <TouchableOpacity onPress={() => navigation.navigate('IspListScreen')} activeOpacity={0.9} style={styles.cardShadow}>
+            <LinearGradient colors={isDarkMode ? ['#374151', '#1f2937'] : ['#8da2fb', '#a78bfa']} style={styles.card}>
+              <Icon name="router" size={26} color="#fff" style={styles.cardIcon} />
+              <Text style={styles.cardText}>I. S. P. s</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        {userRole === 'MEGA ADMINISTRADOR' && (
+          <TouchableOpacity onPress={() => navigation.navigate('PlanManagementScreen')} activeOpacity={0.9} style={styles.cardShadow}>
+            <LinearGradient colors={isDarkMode ? ['#374151', '#1f2937'] : ['#8da2fb', '#a78bfa']} style={styles.card}>
+              <Icon name="assignment" size={26} color="#fff" style={styles.cardIcon} />
+              <Text style={styles.cardText}>Planes de Suscripción</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity onPress={() => navigation.navigate('ServiciosAdicionalesScreen')} activeOpacity={0.9} style={styles.cardShadow}>
+          <LinearGradient colors={isDarkMode ? ['#374151', '#1f2937'] : ['#8da2fb', '#a78bfa']} style={styles.card}>
+            <Icon name="miscellaneous-services" size={26} color="#fff" style={styles.cardIcon} />
+            <Text style={styles.cardText}>Servicios Adicionales</Text>
+          </LinearGradient>
         </TouchableOpacity>
         {userRole === 'MEGA ADMINISTRADOR' && (
-          <TouchableOpacity 
-            style={styles.button} 
-            onPress={() => navigation.navigate('ContabilidadPlanManagementScreen')}
-          >
-            <Text style={styles.buttonText}>Gestión de Planes de Contabilidad</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('ContabilidadPlanManagementScreen')} activeOpacity={0.9} style={styles.cardShadow}>
+            <LinearGradient colors={isDarkMode ? ['#374151', '#1f2937'] : ['#8da2fb', '#a78bfa']} style={styles.card}>
+              <Icon name="calculate" size={26} color="#fff" style={styles.cardIcon} />
+              <Text style={styles.cardText}>Planes de Contabilidad</Text>
+            </LinearGradient>
           </TouchableOpacity>
         )}
         {(userRole === 'MEGA ADMINISTRADOR' || userRole === 'SUPER ADMINISTRADOR') && (
-          <TouchableOpacity 
-            style={styles.button} 
-            onPress={() => navigation.navigate('ContabilidadSuscripcionScreen')}
-          >
-            <Text style={styles.buttonText}>Suscripción de Contabilidad</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('ContabilidadSuscripcionScreen')} activeOpacity={0.9} style={styles.cardShadow}>
+            <LinearGradient colors={isDarkMode ? ['#374151', '#1f2937'] : ['#8da2fb', '#a78bfa']} style={styles.card}>
+              <Icon name="receipt-long" size={26} color="#fff" style={styles.cardIcon} />
+              <Text style={styles.cardText}>Suscripción Contabilidad</Text>
+            </LinearGradient>
           </TouchableOpacity>
         )}
         {(userRole === 'MEGA ADMINISTRADOR' || userRole === 'SUPER ADMINISTRADOR') && (
-          <TouchableOpacity 
-            style={styles.button} 
-            onPress={() => navigation.navigate('CompanySettingsScreen')}
-          >
-            <Text style={styles.buttonText}>Configuración de Empresa</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('CompanySettingsScreen')} activeOpacity={0.9} style={styles.cardShadow}>
+            <LinearGradient colors={isDarkMode ? ['#374151', '#1f2937'] : ['#8da2fb', '#a78bfa']} style={styles.card}>
+              <Icon name="business" size={26} color="#fff" style={styles.cardIcon} />
+              <Text style={styles.cardText}>Configuración de Empresa</Text>
+            </LinearGradient>
           </TouchableOpacity>
         )}
-        
+
         {/* Botones de sistema de pagos para MEGA ADMINISTRADOR */}
         {userRole === 'MEGA ADMINISTRADOR' && (
           <>
-            <TouchableOpacity 
-              style={styles.button} 
-              onPress={() => navigation.navigate('DashboardPagosSimple')}
-            >
-              <Text style={styles.buttonText}>📊 Dashboard de Pagos</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('DashboardPagosSimple')} activeOpacity={0.9} style={styles.cardShadow}>
+              <LinearGradient colors={isDarkMode ? ['#374151', '#1f2937'] : ['#8da2fb', '#a78bfa']} style={styles.card}>
+                <Icon name="insights" size={26} color="#fff" style={styles.cardIcon} />
+                <Text style={styles.cardText}>Dashboard de Pagos</Text>
+              </LinearGradient>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.button} 
-              onPress={() => navigation.navigate('HistorialTransaccionesSimple')}
-            >
-              <Text style={styles.buttonText}>📋 Historial de Transacciones</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('HistorialTransaccionesSimple')} activeOpacity={0.9} style={styles.cardShadow}>
+              <LinearGradient colors={isDarkMode ? ['#374151', '#1f2937'] : ['#8da2fb', '#a78bfa']} style={styles.card}>
+                <Icon name="history" size={26} color="#fff" style={styles.cardIcon} />
+                <Text style={styles.cardText}>Historial de Transacciones</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </>
         )}
-        
-        <TouchableOpacity style={styles.button} onPress={handleLogout}>
-          <Text style={styles.buttonText}>Cerrar Sesión</Text>
+
+        <TouchableOpacity onPress={handleLogout} activeOpacity={0.9} style={styles.cardShadow}>
+          <LinearGradient colors={isDarkMode ? ['#ef4444', '#b91c1c'] : ['#f87171', '#ef4444']} style={styles.card}
+          >
+            <Icon name="logout" size={26} color="#fff" style={styles.cardIcon} />
+            <Text style={styles.cardText}>Cerrar Sesión</Text>
+          </LinearGradient>
         </TouchableOpacity>
+
+        </View>
       </View>
 
 

@@ -13,15 +13,30 @@ function getStyles(isDarkMode) {
     container: {
       flex: 1,
       justifyContent: 'flex-start',
-      alignItems: 'center',
-      padding: 20,
-      paddingTop: 40,
+      alignItems: 'stretch',
+      paddingHorizontal: 16,
+      paddingTop: 16,
       backgroundColor: isDarkMode ? '#121212' : '#FFF',
     },
-    title: {
-      fontSize: 24,
-      color: isDarkMode ? 'white' : 'black',
-      marginBottom: 20,
+    header: {
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 16,
+      marginTop: 12, // desplazar un poco más hacia abajo
+    },
+    headerContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    headerTitle: {
+      color: '#fff',
+      fontSize: 20,
+      fontWeight: '700',
+    },
+    headerSubtitle: {
+      color: 'rgba(255,255,255,0.85)',
+      fontSize: 14,
+      marginTop: 2,
     },
     userButton: {
       padding: 10,
@@ -31,15 +46,37 @@ function getStyles(isDarkMode) {
     userButtonText: {
       color: isDarkMode ? 'white' : 'black',
     },
-    button: {
-      padding: 10,
-      backgroundColor: isDarkMode ? '#333' : '#EEE',
-      borderRadius: 5,
-      marginBottom: 10,
+    grid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
     },
-    buttonText: {
-      color: isDarkMode ? 'white' : 'black',
-      textAlign: 'center',
+    cardShadow: {
+      width: '48%',
+      borderRadius: 14,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 4,
+      marginBottom: 12,
+    },
+    card: {
+      borderRadius: 14,
+      paddingVertical: 18,
+      paddingHorizontal: 14,
+      minHeight: 84,
+      alignItems: 'flex-start',
+      justifyContent: 'center',
+    },
+    cardIcon: {
+      marginBottom: 8,
+    },
+    cardText: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: '700',
+      lineHeight: 18,
     },
     headerRightContainer: {
       flexDirection: 'row',
