@@ -11,6 +11,7 @@ import {
     Pressable,
     Animated
 } from 'react-native';
+// (Revert) No gradient header
 
 const { width } = Dimensions.get('window');
 import { useTheme } from '../../../ThemeContext';
@@ -89,6 +90,12 @@ const IspDetailsScreen = ({ route, navigation }) => {
     totalFacturasVencidasInactivos: 0,
   });
   const [isAccountingActive, setIsAccountingActive] = useState(false);
+  const [totalesCon, setTotalesCon] = useState({
+    totalConexiones: 0,
+    conexionesActivas: 0,
+    conexionesSuspendidas: 0,
+    conexionesInactivas: 0,
+  });
 
   // 5. Estados para animación de header
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -200,25 +207,44 @@ const totales = async (ispId) => {
       console.log('📥 Response headers:', response.headers);
       console.log('📥 Response data type:', typeof response.data);
       
-      // Verificar si la respuesta es HTML en lugar de JSON
-      if (typeof response.data === 'string' && response.data.includes('<!doctype html>')) {
-        console.error('❌ API retornó HTML en lugar de JSON. Endpoint posiblemente no existe.');
-        console.error('❌ URL llamada:', `https://wellnet-rd.com:444/api/totales-isp/${ispId}`);
-        
-        // Usar datos de ejemplo o mantener valores por defecto
-        setTotalesIsp({
-          totalClientes: 0,
-          clientesActivos: 0,
-          clientesInactivos: 0,
-          totalFacturasVencidas: 0,
-          totalFacturasVencidasActivos: 0,
-          totalFacturasVencidasInactivos: 0,
-        });
-        return;
+      // Normalizar payload (manejar texto JSON, envolturas y snake_case)
+      let payload = response.data;
+      if (typeof payload === 'string') {
+        if (payload.trim().startsWith('<')) {
+          console.error('❌ API retornó HTML en lugar de JSON. URL:', `https://wellnet-rd.com:444/api/totales-isp/${ispId}`);
+          setTotalesIsp({
+            totalClientes: 0,
+            clientesActivos: 0,
+            clientesInactivos: 0,
+            totalFacturasVencidas: 0,
+            totalFacturasVencidasActivos: 0,
+            totalFacturasVencidasInactivos: 0,
+          });
+          return;
+        }
+        try {
+          payload = JSON.parse(payload);
+        } catch (e) {
+          console.error('❌ No se pudo parsear JSON de texto:', e);
+          payload = {};
+        }
       }
-      
-      if (response.status === 200 && typeof response.data === 'object') {
-        const data = response.data;
+
+      if (response.status === 200 && typeof payload === 'object') {
+        // Extraer objeto de datos si viene envuelto
+        const body = (payload && typeof payload === 'object' && payload.data && typeof payload.data === 'object')
+          ? payload.data
+          : payload;
+
+        // Adaptar posibles snake_case
+        const data = {
+          totalClientes: body.totalClientes ?? body.total_clientes ?? 0,
+          clientesActivos: body.clientesActivos ?? body.clientes_activos ?? 0,
+          clientesInactivos: body.clientesInactivos ?? body.clientes_inactivos ?? 0,
+          totalFacturasVencidas: body.totalFacturasVencidas ?? body.total_facturas_vencidas ?? 0,
+          totalFacturasVencidasActivos: body.totalFacturasVencidasActivos ?? body.total_facturas_vencidas_activos ?? 0,
+          totalFacturasVencidasInactivos: body.totalFacturasVencidasInactivos ?? body.total_facturas_vencidas_inactivos ?? 0,
+        };
   
         // Actualiza el estado con los datos recibidos
         setTotalesIsp({
@@ -256,10 +282,52 @@ const totales = async (ispId) => {
       });
     }
   };
+
+  // ---------------------------------------------------------------------------
+  // Llamada a la API para obtener totales de conexiones
+  // ---------------------------------------------------------------------------
+  const conexionesTotales = async (currentIspId) => {
+    try {
+      console.log('🔄 Llamando API totales-conexiones con ispId:', currentIspId);
+      const res = await axios.get(`https://wellnet-rd.com:444/api/totales-conexiones/${currentIspId}`, {
+        headers: { 'Accept': 'application/json' },
+        timeout: 10000,
+      });
+
+      let payload = res.data;
+      if (typeof payload === 'string') {
+        if (payload.trim().startsWith('<')) {
+          console.error('❌ API totales-conexiones retornó HTML');
+          setTotalesCon({ totalConexiones: 0, conexionesActivas: 0, conexionesSuspendidas: 0, conexionesInactivas: 0 });
+          return;
+        }
+        try { payload = JSON.parse(payload); } catch { payload = {}; }
+      }
+
+      const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
+
+      // Tomar valores directos o derivarlos desde conexionesPorEstado
+      const totalConexiones = body.totalConexiones ?? body.total_conexiones ?? 0;
+      const conexionesActivas = body.conexionesActivas ?? body.conexiones_activas ?? body?.conexionesPorEstado?.estado3 ?? 0;
+      const conexionesSuspendidas = body.conexionesSuspendidas ?? body.conexiones_suspendidas ?? body?.conexionesPorEstado?.estado4 ?? 0;
+      // Inactivas combinan 0,5,6 si no viene directo
+      const inactivasDerivadas = (body?.conexionesPorEstado?.estado0 || 0)
+        + (body?.conexionesPorEstado?.estado5 || 0)
+        + (body?.conexionesPorEstado?.estado6 || 0);
+      const conexionesInactivas = body.conexionesInactivas ?? body.conexiones_inactivas ?? inactivasDerivadas;
+
+      setTotalesCon({ totalConexiones, conexionesActivas, conexionesSuspendidas, conexionesInactivas });
+      console.log('✅ Totales conexiones:', { totalConexiones, conexionesActivas, conexionesSuspendidas, conexionesInactivas });
+    } catch (e) {
+      console.error('❌ Error en totales-conexiones:', e.message);
+      setTotalesCon({ totalConexiones: 0, conexionesActivas: 0, conexionesSuspendidas: 0, conexionesInactivas: 0 });
+    }
+  };
   
   useEffect(() => {
     const loadData = async () => {
       await totales(ispId);
+      await conexionesTotales(ispId);
       await checkAccountingSubscription(ispId);
     };
     loadData();
@@ -375,6 +443,7 @@ useFocusEffect(
                     setUsuarioPermisos(response.data.usuario);
                     setIdUsuario(response.data.usuario[0].id);
                     await totales(idIsp);
+                    await conexionesTotales(idIsp);
                     await checkAccountingSubscription(idIsp); // Recargar estado de contabilidad
                     // await fetchOrderCounts(idIsp);
                 } else {
@@ -431,6 +500,14 @@ const botonesData = [
         color: '#FFA500',
     },
     {
+        id: '2',
+        title: 'Clientes',
+        screen: 'ClientListScreen',
+        permiso: 2,
+        icon: 'groups',
+        color: '#3B82F6',
+    },
+    {
         id: '15',
         title: 'Facturación ISP',
         screen: 'IspOwnerBillingDashboard',
@@ -448,14 +525,6 @@ const botonesData = [
         permiso: 4,
         icon: 'assignment',
         color: '#8A2BE2',
-    },
-    {
-        id: '2',
-        title: 'Clientes',
-        screen: 'ClientListScreen',
-        permiso: 2,
-        icon: 'person',
-        color: '#1E90FF',
     },
     {
         id: '1',
@@ -548,6 +617,7 @@ const botonesData = [
 
   botonesData.forEach((btn) => {
     if (btn.id === '2') {
+      // Restaurar el título con el formato de texto anterior (mismas letras)
       btn.title = `Clientes\n\nTotal: ${totalesIsp.totalClientes || 0}\n\nActivos: ${totalesIsp.clientesActivos || 0}\nFact. Vencidas: ${totalesIsp.totalFacturasVencidasActivos || 0}\n\nInactivos: ${totalesIsp.clientesInactivos || 0}\nFact. Vencidas: ${totalesIsp.totalFacturasVencidasInactivos || 0}`;
     } else if (btn.id === '1') {
       btn.title = `Facturaciones\n\nFacturas Vencidas: ${totalesIsp.totalFacturasVencidas || 0}`;
@@ -747,7 +817,7 @@ const botonesData = [
         ]}>
           {mainTitle}
         </Text>
-        {subTitle.length > 0 && (
+        {item.id !== '2' && item.id !== '7' && subTitle.length > 0 && (
           <Text style={[
             styles.functionSubtext,
             isDisabled && { color: '#9CA3AF' }
@@ -755,6 +825,121 @@ const botonesData = [
             {subTitle}
           </Text>
         )}
+
+        {item.id === '2' && (
+          <View style={styles.metricsContainer}>
+            {/* Total */}
+            <Text style={styles.metricSubtle}>Total: {totalesIsp.totalClientes || 0}</Text>
+
+            {/* Mini gráfico de barras Activos/Inactivos */}
+            {(() => {
+              const activos = totalesIsp.clientesActivos || 0;
+              const inactivos = totalesIsp.clientesInactivos || 0;
+              const totalAI = activos + inactivos;
+              return (
+                <View style={styles.miniBarTrack}>
+                  {totalAI > 0 ? (
+                    <>
+                      {activos > 0 && (
+                        <View style={[styles.miniBarSegmentActive, { flex: activos }]} />
+                      )}
+                      {inactivos > 0 && (
+                        <View style={[styles.miniBarSegmentInactive, { flex: inactivos }]} />
+                      )}
+                    </>
+                  ) : (
+                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
+                  )}
+                </View>
+              );
+            })()}
+
+            {/* Activos */}
+            <View style={styles.metricGroup}>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotActive]} />
+                <Text style={styles.metricLabel}>Activos</Text>
+                <Text style={styles.metricValue}>{totalesIsp.clientesActivos || 0}</Text>
+              </View>
+              <View style={styles.metricRow}>
+                <Icon name="warning-amber" size={14} color={isDarkMode ? '#F59E0B' : '#B45309'} />
+                <Text style={styles.metricLabel}>Fact. Vencidas</Text>
+                <Text style={[styles.metricValue, styles.metricValueWarning]}>{totalesIsp.totalFacturasVencidasActivos || 0}</Text>
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Inactivos */}
+            <View style={styles.metricGroup}>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotInactive]} />
+                <Text style={styles.metricLabel}>Inactivos</Text>
+                <Text style={styles.metricValue}>{totalesIsp.clientesInactivos || 0}</Text>
+              </View>
+              <View style={styles.metricRow}>
+                <Icon name="warning-amber" size={14} color={isDarkMode ? '#F59E0B' : '#B45309'} />
+                <Text style={styles.metricLabel}>Fact. Vencidas</Text>
+                <Text style={[styles.metricValue, styles.metricValueWarning]}>{totalesIsp.totalFacturasVencidasInactivos || 0}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {item.id === '7' && (
+          <View style={styles.metricsContainer}>
+            {/* Total */}
+            <Text style={styles.metricSubtle}>Total: {totalesCon.totalConexiones || 0}</Text>
+
+            {/* Mini gráfico de barras: Activas / Suspendidas / Inactivas */}
+            {(() => {
+              const a = totalesCon.conexionesActivas || 0;
+              const s = totalesCon.conexionesSuspendidas || 0;
+              const i = totalesCon.conexionesInactivas || 0;
+              const total = a + s + i;
+              return (
+                <View style={styles.miniBarTrack}>
+                  {total > 0 ? (
+                    <>
+                      {a > 0 && (<View style={[styles.miniBarSegmentActive, { flex: a }]} />)}
+                      {s > 0 && (<View style={[styles.miniBarSegmentSuspended, { flex: s }]} />)}
+                      {i > 0 && (<View style={[styles.miniBarSegmentInactive, { flex: i }]} />)}
+                    </>
+                  ) : (
+                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
+                  )}
+                </View>
+              );
+            })()}
+
+            {/* Activas */}
+            <View style={styles.metricGroup}>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotActive]} />
+                <Text style={styles.metricLabel}>Activas</Text>
+                <Text style={styles.metricValue}>{totalesCon.conexionesActivas || 0}</Text>
+              </View>
+              {/* Suspendidas */}
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotSuspended]} />
+                <Text style={styles.metricLabel}>Suspendidas</Text>
+                <Text style={[styles.metricValue, styles.metricValueWarning]}>{totalesCon.conexionesSuspendidas || 0}</Text>
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Inactivas */}
+            <View style={styles.metricGroup}>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotInactive]} />
+                <Text style={styles.metricLabel}>Inactivas</Text>
+                <Text style={styles.metricValue}>{totalesCon.conexionesInactivas || 0}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+        {/* Sin badges: se mantiene el texto original de métricas dentro del título */}
         {isDisabled && item.id === '13' && (
           <Text style={[styles.functionSubtext, { color: '#9CA3AF', fontSize: 10, marginTop: 4 }]}>
             Requiere suscripción activa

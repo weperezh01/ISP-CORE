@@ -287,6 +287,85 @@ const getStyles = (isDarkMode) => StyleSheet.create({
         fontWeight: '500',
     },
 
+    // Enhanced metrics layout for Clientes card
+    metricsContainer: {
+        width: '100%',
+        marginTop: width < 400 ? 6 : 8,
+    },
+    metricSubtle: {
+        textAlign: 'center',
+        color: isDarkMode ? colors.gray[400] : colors.gray[600],
+        fontSize: width < 400 ? 10 : 12,
+        fontWeight: '600',
+        marginBottom: width < 400 ? 6 : 8,
+    },
+    metricGroup: {
+        gap: width < 400 ? 4 : 6,
+        marginBottom: width < 400 ? 6 : 8,
+    },
+    metricRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    metricLabel: {
+        flex: 1,
+        marginLeft: 8,
+        color: isDarkMode ? colors.gray[300] : colors.gray[700],
+        fontSize: width < 400 ? 11 : 13,
+        fontWeight: '700',
+    },
+    metricValue: {
+        color: isDarkMode ? colors.gray[100] : colors.gray[900],
+        fontSize: width < 400 ? 12 : 14,
+        fontWeight: '800',
+    },
+    metricValueWarning: {
+        color: colors.warning[600],
+    },
+    statusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    statusDotActive: {
+        backgroundColor: colors.success[600],
+    },
+    statusDotInactive: {
+        backgroundColor: colors.gray[500],
+    },
+    divider: {
+        height: 1,
+        backgroundColor: isDarkMode ? colors.gray[700] : colors.gray[200],
+        marginVertical: width < 400 ? 6 : 8,
+        borderRadius: 1,
+    },
+
+    // Mini bar chart
+    miniBarTrack: {
+        height: 8,
+        borderRadius: 999,
+        overflow: 'hidden',
+        backgroundColor: isDarkMode ? colors.gray[700] : colors.gray[200],
+        marginBottom: width < 400 ? 8 : 10,
+    },
+    miniBarSegmentActive: {
+        backgroundColor: colors.success[600],
+        height: '100%',
+    },
+    miniBarSegmentInactive: {
+        backgroundColor: colors.gray[500],
+        height: '100%',
+    },
+    miniBarSegmentSuspended: {
+        backgroundColor: colors.warning[600],
+        height: '100%',
+    },
+    statusDotSuspended: {
+        backgroundColor: colors.warning[600],
+    },
+
+
     // Loading states
     loadingContainer: {
         flex: 1,
