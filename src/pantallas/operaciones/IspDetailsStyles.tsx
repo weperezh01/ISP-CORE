@@ -323,6 +323,9 @@ const getStyles = (isDarkMode) => StyleSheet.create({
     metricValueWarning: {
         color: colors.warning[600],
     },
+    metricValueSuccess: {
+        color: colors.success[600],
+    },
     statusDot: {
         width: 8,
         height: 8,
@@ -361,7 +364,18 @@ const getStyles = (isDarkMode) => StyleSheet.create({
         backgroundColor: colors.warning[600],
         height: '100%',
     },
+    miniBarSegmentInfo: {
+        backgroundColor: colors.primary[600],
+        height: '100%',
+    },
+    miniBarSegmentError: {
+        backgroundColor: colors.error[600],
+        height: '100%',
+    },
     statusDotSuspended: {
+        backgroundColor: colors.warning[600],
+    },
+    statusDotWarning: {
         backgroundColor: colors.warning[600],
     },
 

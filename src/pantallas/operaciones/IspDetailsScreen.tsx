@@ -96,6 +96,20 @@ const IspDetailsScreen = ({ route, navigation }) => {
     conexionesSuspendidas: 0,
     conexionesInactivas: 0,
   });
+  const [totalesCic, setTotalesCic] = useState({
+    totalCiclos: 0,
+    ciclosVigentes: 0,
+    ciclosCerrados: 0,
+    ciclosVencidos: 0,
+    resumenFinanciero: {
+      totalFacturas: 0,
+      totalDinero: 0,
+      facturasPendientes: 0,
+      dineroPendiente: 0,
+      facturasCobradasPorcentaje: 0,
+      dineroRecaudadoPorcentaje: 0,
+    },
+  });
 
   // 5. Estados para animación de header
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -323,11 +337,96 @@ const totales = async (ispId) => {
       setTotalesCon({ totalConexiones: 0, conexionesActivas: 0, conexionesSuspendidas: 0, conexionesInactivas: 0 });
     }
   };
+
+  // ---------------------------------------------------------------------------
+  // Llamada a la API para obtener totales de ciclos de facturación
+  // ---------------------------------------------------------------------------
+  const ciclosTotales = async (currentIspId) => {
+    try {
+      console.log('🔄 Llamando API totales-ciclos con ispId:', currentIspId);
+      const res = await axios.get(`https://wellnet-rd.com:444/api/totales-ciclos/${currentIspId}`, {
+        headers: { 'Accept': 'application/json' },
+        timeout: 10000,
+      });
+
+      let payload = res.data;
+      if (typeof payload === 'string') {
+        if (payload.trim().startsWith('<')) {
+          console.error('❌ API totales-ciclos retornó HTML');
+          return setTotalesCic({
+            totalCiclos: 0,
+            ciclosVigentes: 0,
+            ciclosCerrados: 0,
+            ciclosVencidos: 0,
+            resumenFinanciero: {
+              totalFacturas: 0,
+              totalDinero: 0,
+              facturasPendientes: 0,
+              dineroPendiente: 0,
+              facturasCobradasPorcentaje: 0,
+              dineroRecaudadoPorcentaje: 0,
+            },
+          });
+        }
+        try { payload = JSON.parse(payload); } catch { payload = {}; }
+      }
+
+      const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
+
+      const totalCiclos = body.totalCiclos ?? body.total_ciclos ?? 0;
+      const ciclosVigentes = body.ciclosVigentes ?? body.ciclos_vigentes ?? 0;
+      const ciclosCerrados = body.ciclosCerrados ?? body.ciclos_cerrados ?? 0;
+      const ciclosVencidos = body.ciclosVencidos ?? body.ciclos_vencidos ?? 0;
+
+      const rf = body.resumenFinanciero || body.resumen_financiero || {};
+      let resumenFinanciero = {
+        totalFacturas: rf.totalFacturas ?? rf.total_facturas ?? 0,
+        totalDinero: rf.totalDinero ?? rf.total_dinero ?? 0,
+        facturasPendientes: rf.facturasPendientes ?? rf.facturas_pendientes ?? 0,
+        dineroPendiente: rf.dineroPendiente ?? rf.dinero_pendiente ?? 0,
+        facturasCobradasPorcentaje: rf.facturasCobradasPorcentaje ?? rf.facturas_cobradas_porcentaje ?? 0,
+        dineroRecaudadoPorcentaje: rf.dineroRecaudadoPorcentaje ?? rf.dinero_recaudado_porcentaje ?? 0,
+      };
+
+      // Fallback: si porcentaje viene 0 pero hay totales, calcularlo
+      if (
+        (!resumenFinanciero.dineroRecaudadoPorcentaje || Number(resumenFinanciero.dineroRecaudadoPorcentaje) === 0)
+        && Number(resumenFinanciero.totalDinero) > 0
+      ) {
+        const recaudado = Number(resumenFinanciero.totalDinero) - Number(resumenFinanciero.dineroPendiente || 0);
+        const pct = (recaudado / Number(resumenFinanciero.totalDinero)) * 100;
+        resumenFinanciero = {
+          ...resumenFinanciero,
+          dineroRecaudadoPorcentaje: Number.isFinite(pct) ? pct : 0,
+        };
+      }
+
+      setTotalesCic({ totalCiclos, ciclosVigentes, ciclosCerrados, ciclosVencidos, resumenFinanciero });
+      console.log('✅ Totales ciclos:', { totalCiclos, ciclosVigentes, ciclosCerrados, ciclosVencidos, resumenFinanciero });
+    } catch (e) {
+      console.error('❌ Error en totales-ciclos:', e.message);
+      setTotalesCic({
+        totalCiclos: 0,
+        ciclosVigentes: 0,
+        ciclosCerrados: 0,
+        ciclosVencidos: 0,
+        resumenFinanciero: {
+          totalFacturas: 0,
+          totalDinero: 0,
+          facturasPendientes: 0,
+          dineroPendiente: 0,
+          facturasCobradasPorcentaje: 0,
+          dineroRecaudadoPorcentaje: 0,
+        },
+      });
+    }
+  };
   
   useEffect(() => {
     const loadData = async () => {
       await totales(ispId);
       await conexionesTotales(ispId);
+      await ciclosTotales(ispId);
       await checkAccountingSubscription(ispId);
     };
     loadData();
@@ -444,6 +543,7 @@ useFocusEffect(
                     setIdUsuario(response.data.usuario[0].id);
                     await totales(idIsp);
                     await conexionesTotales(idIsp);
+                    await ciclosTotales(idIsp);
                     await checkAccountingSubscription(idIsp); // Recargar estado de contabilidad
                     // await fetchOrderCounts(idIsp);
                 } else {
@@ -508,6 +608,24 @@ const botonesData = [
         color: '#3B82F6',
     },
     {
+        id: '1',
+        title: 'Facturaciones',
+        screen: 'FacturacionesScreen',
+        permiso: 1,
+        icon: 'receipt',
+        color: '#FF4500',
+        params: { ispId: ispId },
+    },
+    {
+        id: '16',
+        title: 'Gestión de SMS',
+        screen: 'SMSManagementScreen',
+        params: { ispId },
+        permiso: 2,
+        icon: 'sms',
+        color: '#10B981',
+    },
+    {
         id: '15',
         title: 'Facturación ISP',
         screen: 'IspOwnerBillingDashboard',
@@ -525,15 +643,6 @@ const botonesData = [
         permiso: 4,
         icon: 'assignment',
         color: '#8A2BE2',
-    },
-    {
-        id: '1',
-        title: 'Facturaciones',
-        screen: 'FacturacionesScreen',
-        permiso: 1,
-        icon: 'receipt',
-        color: '#FF4500',
-        params: { ispId: ispId },
     },
     {
         id: '3',
@@ -588,15 +697,6 @@ const botonesData = [
         permiso: 10,
         icon: 'local-shipping',
         color: '#FF8C00',
-    },
-    {
-        id: '16',
-        title: 'Gestión de SMS',
-        screen: 'SMSManagementScreen',
-        params: { ispId },
-        permiso: 2,
-        icon: 'sms',
-        color: '#10B981',
     },
 ];
 
@@ -817,7 +917,7 @@ const botonesData = [
         ]}>
           {mainTitle}
         </Text>
-        {item.id !== '2' && item.id !== '7' && subTitle.length > 0 && (
+        {item.id !== '2' && item.id !== '7' && item.id !== '1' && subTitle.length > 0 && (
           <Text style={[
             styles.functionSubtext,
             isDisabled && { color: '#9CA3AF' }
@@ -935,6 +1035,60 @@ const botonesData = [
                 <View style={[styles.statusDot, styles.statusDotInactive]} />
                 <Text style={styles.metricLabel}>Inactivas</Text>
                 <Text style={styles.metricValue}>{totalesCon.conexionesInactivas || 0}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {item.id === '1' && (
+          <View style={styles.metricsContainer}>
+            {/* Total ciclos */}
+            <Text style={styles.metricSubtle}>Total: {totalesCic.totalCiclos || 0}</Text>
+
+            {/* Mini gráfico: Vigentes / Cerrados / Vencidos */}
+            {(() => {
+              const v = totalesCic.ciclosVigentes || 0;
+              const c = totalesCic.ciclosCerrados || 0;
+              const x = totalesCic.ciclosVencidos || 0;
+              const total = v + c + x;
+              return (
+                <View style={styles.miniBarTrack}>
+                  {total > 0 ? (
+                    <>
+                      {v > 0 && (<View style={[styles.miniBarSegmentActive, { flex: v }]} />)}
+                      {c > 0 && (<View style={[styles.miniBarSegmentInfo, { flex: c }]} />)}
+                      {x > 0 && (<View style={[styles.miniBarSegmentError, { flex: x }]} />)}
+                    </>
+                  ) : (
+                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
+                  )}
+                </View>
+              );
+            })()}
+
+            {/* Recaudación y pendiente */}
+            <View style={styles.metricGroup}>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotActive]} />
+                <Text style={styles.metricLabel}>Recaudación</Text>
+                {(() => {
+                  const pct = Number(totalesCic.resumenFinanciero?.dineroRecaudadoPorcentaje || 0);
+                  const stylePct = pct >= 80
+                    ? [styles.metricValue, styles.metricValueSuccess]
+                    : (pct <= 10 ? [styles.metricValue, styles.metricValueWarning] : styles.metricValue);
+                  return (
+                    <Text style={stylePct}>
+                      {pct.toFixed(2)}%
+                    </Text>
+                  );
+                })()}
+              </View>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotWarning]} />
+                <Text style={styles.metricLabel}>Pendiente</Text>
+                <Text style={[styles.metricValue, styles.metricValueWarning]}>
+                  ${Number(totalesCic.resumenFinanciero?.dineroPendiente || 0).toLocaleString()}
+                </Text>
               </View>
             </View>
           </View>
