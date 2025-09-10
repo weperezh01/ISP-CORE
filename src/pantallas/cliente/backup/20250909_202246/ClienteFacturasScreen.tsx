@@ -4,13 +4,14 @@ import { useTheme } from '../../../ThemeContext';
 import ThemeSwitch from '../../componentes/themeSwitch';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-// Usar fallback debido a problema con el archivo original de estilos
-import { getStyles } from './ClienteFacturasScreenStylesFallback';
+import { getStyles } from './ClienteFacturasScreenStyles';
 import HorizontalMenu from '../../componentes/HorizontalMenu';
 import MenuModal from '../../componentes/MenuModal';
 
 const ClienteFacturasScreen = ({ route }) => {
     const { clientId, usuarioId } = route.params;
+    const DEBUG = __DEV__;
+    const dbg = (...args) => { if (DEBUG) console.log('[ClienteFacturas]', ...args); };
     const { isDarkMode, toggleTheme } = useTheme();
     const styles = getStyles(isDarkMode);
     const navigation = useNavigation();
@@ -24,16 +25,6 @@ const ClienteFacturasScreen = ({ route }) => {
     const [idUsuario, setIdUsuario] = useState('');
     const [showClientDetails, setShowClientDetails] = useState(true);
     const [modalVisible, setModalVisible] = useState(false);
-    // Pago: método y detalles
-    const [payMethodModalVisible, setPayMethodModalVisible] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState(null as null | 'efectivo' | 'transferencia' | 'cheque');
-    const [bankName, setBankName] = useState('');
-    const [referenceNumber, setReferenceNumber] = useState('');
-    const [showExtraFields, setShowExtraFields] = useState(false);
-    const [destAccount, setDestAccount] = useState('');
-    const [accountHolder, setAccountHolder] = useState('');
-    const [checkDate, setCheckDate] = useState(''); // YYYY-MM-DD
-    const [paymentNote, setPaymentNote] = useState('');
     const [nota, setNota] = useState('');
     const [menuVisible, setMenuVisible] = useState(false);
     const [selectedFacturaId, setSelectedFacturaId] = useState(null);
@@ -43,6 +34,8 @@ const ClienteFacturasScreen = ({ route }) => {
         { id: 3, label: 'Pendiente de aprobación', checked: false }
     ]);
     const [ispId, setIspId] = useState(null);  // Estado para almacenar el id_isp
+    const [searchVisible, setSearchVisible] = useState(false);
+    const [refreshFlag, setRefreshFlag] = useState(false);
 
     // Estados para animación de header y menu
     const scrollY = useRef(new Animated.Value(0)).current;
@@ -111,8 +104,7 @@ const ClienteFacturasScreen = ({ route }) => {
     );
 
     const currentDateTime = new Date();
-    console.log('Fecha y Hora:', currentDateTime.toLocaleString());
-    console.log('clientInfo:', JSON.stringify(clientInfo, null, 2));
+    dbg('mount at', currentDateTime.toLocaleString(), { clientId, usuarioId });
 
   
     const botones = [
@@ -123,26 +115,29 @@ const ClienteFacturasScreen = ({ route }) => {
             icon: 'search',
             action: () => setSearchVisible((prev) => !prev) // Alternar visibilidad
         },
-        { id: '8', title: 'Filtrar', screen: 'ClientListScreen', icon: 'filter', action: () => setModalVisible(!modalVisible) },
+        { id: '8', title: 'Filtrar', screen: 'ClientListScreen', icon: 'filter-list', action: () => setModalVisible(!modalVisible) },
         // { id: '5', title: 'Nueva Factura', screen: 'ClientListScreen', icon: 'plus' },
         {
             id: '5',
             title: 'Nueva Factura',
             screen: 'NuevaFacturaScreen', // Nombre de la pantalla
-            icon: 'plus',
+            icon: 'add',
             action: () => navigation.navigate('NuevaFacturaScreen', {id_cliente: clientId, clientInfo }), // Enviar datos del cliente
         },        
         // { id: '7', title: 'Tipos de conexión', screen: 'TiposDeConexionScreen', icon: 'plug' },
-        { id: '1', title: 'Clientes', screen: 'ClientListScreen', icon: 'users' },
-        { id: '2', title: 'Ciclos Facturaciones', screen: 'FacturacionesScreen', icon: 'file-text' },
+        { id: '1', title: 'Clientes', screen: 'ClientListScreen', icon: 'people' },
+        { id: '2', title: 'Ciclos Facturaciones', screen: 'FacturacionesScreen', icon: 'description' },
         { id: '3', title: 'Reportes', screen: 'IngresosScreen', icon: 'bar-chart' },
         {
             id: '4',
             title: isDarkMode ? 'Modo Claro' : 'Modo Oscuro',
-            icon: isDarkMode ? 'sun-o' : 'moon-o',
+            icon: isDarkMode ? 'light-mode' : 'dark-mode',
             action: toggleTheme, // Aquí se conecta al mismo toggleTheme del switch
         },
     ];
+    if (DEBUG) {
+        dbg('botones:', botones.map(b => ({ id: b.id, title: b.title, icon: b.icon })));
+    }
     
     useEffect(() => {
         const obtenerIspId = async () => {
@@ -150,6 +145,7 @@ const ClienteFacturasScreen = ({ route }) => {
                 const ispId = await AsyncStorage.getItem('@selectedIspId');
                 if (ispId) {
                     setIspId(ispId);
+                    if (DEBUG) dbg('ispId loaded', ispId);
                 }
             } catch (error) {
                 console.error('Error al recuperar el ID del ISP', error);
@@ -289,6 +285,7 @@ const ClienteFacturasScreen = ({ route }) => {
 
     const fetchFacturas = async () => {
         try {
+            if (DEBUG) dbg('fetchFacturas:start', { id_cliente: clientId });
             const response = await fetch('https://wellnet-rd.com:444/api/facturas-cliente', {
                 method: 'POST',
                 headers: {
@@ -305,6 +302,7 @@ const ClienteFacturasScreen = ({ route }) => {
             data = data.reverse();
             setFacturas(data);
             setOriginalFacturas(data);
+            if (DEBUG) dbg('fetchFacturas:ok', { count: data.length, first: data[0]?.id_factura });
 
             if (data.length > 0) {
                 setClientInfo({
@@ -342,6 +340,7 @@ const ClienteFacturasScreen = ({ route }) => {
 
         } catch (error) {
             console.error('Error fetching invoices:', error);
+            if (DEBUG) dbg('fetchFacturas:error', String(error));
         }
     };
 
@@ -798,92 +797,86 @@ const ClienteFacturasScreen = ({ route }) => {
         { label: `Pagadas (${facturasCount.pagadas})`, value: 'Pagada' },
     ];
 
-    const proceedCobro = async (metodo: 'efectivo' | 'transferencia' | 'cheque', detalles?: { banco?: string; referencia?: string }) => {
-        try {
-            if (!idUsuario) {
-                Alert.alert('Error', 'No se pudo obtener el ID de usuario.');
-                return;
-            }
-
-            const facturasToCobrar = facturas.filter(factura => factura.isSelected).map(factura => ({
-                id_factura: factura.id_factura,
-                monto_cobrado: factura.partialPaymentActive && factura.partialPayment
-                    ? parseFloat(factura.partialPayment)
-                    : parseFloat(factura.monto_total) - parseFloat(factura.monto_recibido || 0),
-                nota: '',
-                id_ciclo: factura.id_ciclo
-            }));
-
-            const now = new Date();
-            facturas.filter(factura => {
-                const fechaEmision = new Date(factura.fecha_emision);
-                const diffTime = Math.abs(now - fechaEmision);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                return !factura.isSelected && factura.estado === 'pendiente' && diffDays > 30;
-            }).forEach(factura => {
-                facturasToCobrar.push({
-                    id_factura: factura.id_factura,
-                    monto_cobrado: 0,
-                    nota: '',
-                    id_ciclo: factura.id_ciclo
-                });
-            });
-
-            const id_ciclo = facturasToCobrar.length > 0 ? facturasToCobrar[0].id_ciclo : null;
-
-            if (!id_ciclo) {
-                Alert.alert('Error', 'No se pudo obtener el ID del ciclo.');
-                return;
-            }
-
-            const payload: any = {
-                id_cliente: clientId,
-                monto: totalAmount,
-                id_usuario: idUsuario,
-                id_ciclo: id_ciclo,
-                facturas: facturasToCobrar,
-                id_isp: ispId,
-                cargos: [],
-                metodo_pago: metodo,
-            };
-            if (detalles && (detalles.banco || detalles.referencia)) {
-                payload.detalle_pago = detalles;
-            }
-
-            const response = await fetch('https://wellnet-rd.com:444/api/facturas-procesar-cobro', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (response.ok) {
-                const responseData = await response.json();
-                Alert.alert('Dinero Recibido', `Has recibido un total de RD$${totalAmount.toFixed(2)}`);
-                navigation.navigate('ReciboScreen', { reciboData: responseData, id_isp: ispId });
-            } else {
-                Alert.alert('Error', 'Hubo un error al procesar el cobro.');
-            }
-        } catch (error) {
-            console.error('Error al procesar el cobro:', error);
-            Alert.alert('Error', 'Hubo un error al procesar el cobro.');
-        }
-    };
-
-    const confirmAndProceed = (metodo: 'efectivo' | 'transferencia' | 'cheque', detalles?: { banco?: string; referencia?: string }) => {
-        Alert.alert(
-            'Confirmación',
-            `¿Confirmas que deseas recibir un total de RD$${totalAmount.toFixed(2)}?`,
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                { text: 'Confirmar', onPress: () => proceedCobro(metodo, detalles) }
-            ]
-        );
-    };
-
     const handleFooterPress = async () => {
         if (totalAmount > 0) {
-            setPayMethodModalVisible(true);
+            Alert.alert(
+                'Confirmación',
+                `¿Confirmas que deseas recibir un total de RD$${totalAmount.toFixed(2)}?`,
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                        text: 'Confirmar',
+                        onPress: async () => {
+                            try {
+                                if (!idUsuario) {
+                                    Alert.alert('Error', 'No se pudo obtener el ID de usuario.');
+                                    return;
+                                }
+
+                                const facturasToCobrar = facturas.filter(factura => factura.isSelected).map(factura => ({
+                                    id_factura: factura.id_factura,
+                                    monto_cobrado: factura.partialPaymentActive && factura.partialPayment
+                                        ? parseFloat(factura.partialPayment)
+                                        : parseFloat(factura.monto_total) - parseFloat(factura.monto_recibido || 0),
+                                    nota: '',
+                                    id_ciclo: factura.id_ciclo
+                                }));
+
+                                const now = new Date();
+                                facturas.filter(factura => {
+                                    const fechaEmision = new Date(factura.fecha_emision);
+                                    const diffTime = Math.abs(now - fechaEmision);
+                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                                    return !factura.isSelected && factura.estado === 'pendiente' && diffDays > 30;
+                                }).forEach(factura => {
+                                    facturasToCobrar.push({
+                                        id_factura: factura.id_factura,
+                                        monto_cobrado: 0,
+                                        nota: '',
+                                        id_ciclo: factura.id_ciclo
+                                    });
+                                });
+
+                                const id_ciclo = facturasToCobrar.length > 0 ? facturasToCobrar[0].id_ciclo : null;
+
+                                if (!id_ciclo) {
+                                    Alert.alert('Error', 'No se pudo obtener el ID del ciclo.');
+                                    return;
+                                }
+
+                                const response = await fetch('https://wellnet-rd.com:444/api/facturas-procesar-cobro', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        id_cliente: clientId,
+                                        monto: totalAmount,
+                                        id_usuario: idUsuario,
+                                        id_ciclo: id_ciclo,
+                                        facturas: facturasToCobrar,
+                                        id_isp: ispId,
+                                        cargos: []
+                                    })
+                                });
+
+                                if (response.ok) {
+                                    const responseData = await response.json();
+                                    Alert.alert('Dinero Recibido', `Has recibido un total de RD$${totalAmount.toFixed(2)}`);
+
+                                    navigation.navigate('ReciboScreen', { reciboData: responseData, id_isp: ispId });
+                                } else {
+                                    Alert.alert('Error', 'Hubo un error al procesar el cobro.');
+                                }
+                            } catch (error) {
+                                console.error('Error al procesar el cobro:', error);
+                                Alert.alert('Error', 'Hubo un error al procesar el cobro.');
+                            }
+                        }
+                    }
+                ]
+            );
         } else {
             Alert.alert('No hay dinero a recibir', 'Seleccione facturas para recibir dinero.');
         }
@@ -1117,146 +1110,6 @@ const ClienteFacturasScreen = ({ route }) => {
                                 onPress={guardarNota}
                             >
                                 <Text style={styles.modalButtonText}>Aceptar</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* Modal Método de Pago */}
-            <Modal
-                visible={payMethodModalVisible}
-                animationType="fade"
-                transparent
-                onRequestClose={() => setPayMethodModalVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Selecciona método de pago</Text>
-
-                        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-                            <TouchableOpacity
-                                onPress={() => setPaymentMethod('efectivo')}
-                                style={{ flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', borderWidth: 2, borderColor: paymentMethod === 'efectivo' ? '#2563EB' : (isDarkMode ? '#475569' : '#CBD5E1'), backgroundColor: paymentMethod === 'efectivo' ? (isDarkMode ? '#1E3A8A' : '#DBEAFE') : (isDarkMode ? '#334155' : '#F1F5F9') }}
-                            >
-                                <Text style={{ fontSize: 14, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>Efectivo</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={() => setPaymentMethod('transferencia')}
-                                style={{ flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', borderWidth: 2, borderColor: paymentMethod === 'transferencia' ? '#2563EB' : (isDarkMode ? '#475569' : '#CBD5E1'), backgroundColor: paymentMethod === 'transferencia' ? (isDarkMode ? '#1E3A8A' : '#DBEAFE') : (isDarkMode ? '#334155' : '#F1F5F9') }}
-                            >
-                                <Text style={{ fontSize: 14, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>Transferencia</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={() => setPaymentMethod('cheque')}
-                                style={{ flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', borderWidth: 2, borderColor: paymentMethod === 'cheque' ? '#2563EB' : (isDarkMode ? '#475569' : '#CBD5E1'), backgroundColor: paymentMethod === 'cheque' ? (isDarkMode ? '#1E3A8A' : '#DBEAFE') : (isDarkMode ? '#334155' : '#F1F5F9') }}
-                            >
-                                <Text style={{ fontSize: 14, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>Cheque</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {paymentMethod && paymentMethod !== 'efectivo' && (
-                            <View style={{ marginTop: 8 }}>
-                                <Text style={{ fontSize: 16, fontWeight: '700', color: isDarkMode ? '#E2E8F0' : '#0F172A', marginBottom: 8 }}>
-                                    Detalles de {paymentMethod}
-                                </Text>
-                                <TextInput
-                                    placeholder="Banco"
-                                    placeholderTextColor={isDarkMode ? '#94A3B8' : '#64748B'}
-                                    value={bankName}
-                                    onChangeText={setBankName}
-                                    style={{ borderWidth: 2, borderColor: isDarkMode ? '#475569' : '#CBD5E1', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: isDarkMode ? '#F8FAFC' : '#0F172A', marginBottom: 12 }}
-                                />
-                                <TextInput
-                                    placeholder={paymentMethod === 'cheque' ? 'Nº de cheque' : 'Nº de referencia'}
-                                    placeholderTextColor={isDarkMode ? '#94A3B8' : '#64748B'}
-                                    value={referenceNumber}
-                                    onChangeText={setReferenceNumber}
-                                    style={{ borderWidth: 2, borderColor: isDarkMode ? '#475569' : '#CBD5E1', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: isDarkMode ? '#F8FAFC' : '#0F172A' }}
-                                />
-
-                                {/* Link para datos adicionales opcionales */}
-                                {!showExtraFields ? (
-                                    <TouchableOpacity onPress={() => setShowExtraFields(true)} style={{ marginTop: 12 }}>
-                                        <Text style={{ color: '#2563EB', fontWeight: '700', textAlign: 'right' }}>Agregar datos adicionales</Text>
-                                    </TouchableOpacity>
-                                ) : (
-                                    <View style={{ marginTop: 12 }}>
-                                        <TouchableOpacity onPress={() => setShowExtraFields(false)}>
-                                            <Text style={{ color: isDarkMode ? '#94A3B8' : '#64748B', fontWeight: '700', textAlign: 'right' }}>Ocultar datos adicionales</Text>
-                                        </TouchableOpacity>
-                                        <TextInput
-                                            placeholder="Cuenta destino (opcional)"
-                                            placeholderTextColor={isDarkMode ? '#94A3B8' : '#64748B'}
-                                            value={destAccount}
-                                            onChangeText={setDestAccount}
-                                            style={{ borderWidth: 2, borderColor: isDarkMode ? '#475569' : '#CBD5E1', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: isDarkMode ? '#F8FAFC' : '#0F172A', marginTop: 12 }}
-                                        />
-                                        <TextInput
-                                            placeholder="Titular (opcional)"
-                                            placeholderTextColor={isDarkMode ? '#94A3B8' : '#64748B'}
-                                            value={accountHolder}
-                                            onChangeText={setAccountHolder}
-                                            style={{ borderWidth: 2, borderColor: isDarkMode ? '#475569' : '#CBD5E1', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: isDarkMode ? '#F8FAFC' : '#0F172A', marginTop: 12 }}
-                                        />
-                                        {paymentMethod === 'cheque' && (
-                                            <TextInput
-                                                placeholder="Fecha del cheque (YYYY-MM-DD) (opcional)"
-                                                placeholderTextColor={isDarkMode ? '#94A3B8' : '#64748B'}
-                                                value={checkDate}
-                                                onChangeText={setCheckDate}
-                                                keyboardType="numbers-and-punctuation"
-                                                style={{ borderWidth: 2, borderColor: isDarkMode ? '#475569' : '#CBD5E1', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: isDarkMode ? '#F8FAFC' : '#0F172A', marginTop: 12 }}
-                                            />
-                                        )}
-                                        <TextInput
-                                            placeholder="Nota (opcional)"
-                                            placeholderTextColor={isDarkMode ? '#94A3B8' : '#64748B'}
-                                            value={paymentNote}
-                                            onChangeText={setPaymentNote}
-                                            multiline
-                                            style={{ borderWidth: 2, borderColor: isDarkMode ? '#475569' : '#CBD5E1', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: isDarkMode ? '#F8FAFC' : '#0F172A', marginTop: 12, minHeight: 80, textAlignVertical: 'top' }}
-                                        />
-                                    </View>
-                                )}
-                            </View>
-                        )}
-
-                        <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
-                            <TouchableOpacity
-                                style={[{ flex: 1, paddingVertical: 16, borderRadius: 12, alignItems: 'center' }, { backgroundColor: '#EF4444' }]}
-                                onPress={() => { setPayMethodModalVisible(false); }}
-                            >
-                                <Text style={{ color: 'white', fontWeight: '700' }}>Cancelar</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[{ flex: 1, paddingVertical: 16, borderRadius: 12, alignItems: 'center' }, { backgroundColor: '#10B981' }]}
-                                onPress={() => {
-                                    if (!paymentMethod) {
-                                        Alert.alert('Selecciona un método de pago');
-                                        return;
-                                    }
-                                    if (paymentMethod === 'efectivo') {
-                                        setPayMethodModalVisible(false);
-                                        setTimeout(() => confirmAndProceed('efectivo'), 200);
-                                        return;
-                                    }
-                                    if (!bankName.trim() || !referenceNumber.trim()) {
-                                        Alert.alert('Datos incompletos', 'Completa banco y número.');
-                                        return;
-                                    }
-                                    const detalles: any = { banco: bankName.trim(), referencia: referenceNumber.trim() };
-                                    if (showExtraFields) {
-                                        if (destAccount.trim()) detalles.cuenta_destino = destAccount.trim();
-                                        if (accountHolder.trim()) detalles.titular = accountHolder.trim();
-                                        if (paymentMethod === 'cheque' && checkDate.trim()) detalles.fecha_cheque = checkDate.trim();
-                                        if (paymentNote.trim()) detalles.nota = paymentNote.trim();
-                                    }
-                                    setPayMethodModalVisible(false);
-                                    setTimeout(() => confirmAndProceed(paymentMethod, detalles), 200);
-                                }}
-                            >
-                                <Text style={{ color: 'white', fontWeight: '700' }}>Continuar</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

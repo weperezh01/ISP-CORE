@@ -175,21 +175,32 @@ const DetalleFacturaScreen = () => {
 
         const fetchFacturaDetails = async () => {
             try {
-                const response = await fetch('https://wellnet-rd.com:444/api/consulta-facturas-cobradas-por-id_factura', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ id_factura }),
-                    signal: controller.signal
-                });
+                const endpoints = [
+                    'https://wellnet-rd.com:444/api/facturas/consulta-facturas-cobradas-por-id_factura', // nuevo
+                    'https://wellnet-rd.com:444/api/consulta-facturas-cobradas-por-id_factura', // compatibilidad
+                ];
 
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                let data: any = null;
+                let ok = false;
+                let lastErr: any = null;
+
+                for (const url of endpoints) {
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id_factura }),
+                            signal: controller.signal,
+                        });
+                        const body = await response.json();
+                        if (response.ok) { data = body; ok = true; break; }
+                        lastErr = new Error(body?.message || `HTTP ${response.status}`);
+                    } catch (e) { lastErr = e; }
                 }
 
-                const data = await response.json();
-                setFacturaData(data);  // Las notas ahora vienen incluidas en "data"
+                if (!ok || !data) throw lastErr || new Error('Network response was not ok');
+
+                setFacturaData(data);
             } catch (error) {
                 if (!controller.signal.aborted) {
                     setError('Failed to fetch data: ' + error.message);

@@ -335,15 +335,12 @@ const ReciboScreen = ({ route }) => {
       const s = (v ?? '').toString().trim();
       if (s) t += `${label}: ${s}\n`;
     };
-    if (Object.values(dp).some(v => (v ?? '').toString().trim().length > 0)) {
-      t += `[L]<b>Detalles de pago</b>\n`;
-      addIf('Banco', dp.banco);
-      addIf('Referencia', dp.referencia);
-      addIf('Cuenta destino', dp.cuenta_destino);
-      addIf('Titular', dp.titular);
-      addIf('Fecha cheque', dp.fecha_cheque);
-      addIf('Nota', dp.nota);
-    }
+    addIf('Banco', dp.banco);
+    addIf('Referencia', dp.referencia);
+    addIf('Cuenta destino', dp.cuenta_destino);
+    addIf('Titular', dp.titular);
+    addIf('Fecha cheque', dp.fecha_cheque);
+    addIf('Nota', dp.nota);
     t += `[C]${dash()}\n`;
 
     // Detalle de facturas

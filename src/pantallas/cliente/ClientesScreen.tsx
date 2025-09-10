@@ -39,7 +39,8 @@ const ClientListScreen = ({ navigation }) => {
     const [filteredClientCount, setFilteredClientCount] = useState(0);
     const [estadoCounts, setEstadoCounts] = useState({});
     const [menuVisible, setMenuVisible] = useState(false);
-    const [displayedClients, setDisplayedClients] = useState(50); // Paginación progressive
+    const PAGE_SIZE = 50; // Tamaño de página del backend
+    const [offset, setOffset] = useState(0); // Offset para backend
     const [expandedItems, setExpandedItems] = useState(new Set()); // Track which items are expanded
     
     // Referencia para el TextInput
@@ -222,13 +223,13 @@ const ClientListScreen = ({ navigation }) => {
 
     const fetchClientList = async () => {
 
-        if (!usuarioId) {
-            Alert.alert('Error', 'ID de usuario no disponible.');
+        if (!usuarioId || !ispId || ispId === 'No ID') {
+            console.log('⏳ fetchClientList pospuesto: faltan IDs', { usuarioId, ispId });
             return;
         }
 
-        console.log('ID de usuario enviado al servidor: ' + usuarioId);
-        console.log('ID de ISP enviado al servidor: ' + ispId);
+        console.log('ID de usuario enviado al servidor:', usuarioId);
+        console.log('ID de ISP enviado al servidor:', ispId);
 
         try {
             const response = await fetch('https://wellnet-rd.com:444/api/lista-clientes', {
@@ -236,7 +237,15 @@ const ClientListScreen = ({ navigation }) => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ usuarioId: usuarioId, isp_id: ispId })
+                // Enviar ambas claves por compatibilidad y parámetros de paginación
+                body: JSON.stringify({
+                    usuarioId,
+                    isp_id: ispId,
+                    id_isp: ispId,
+                    limite: PAGE_SIZE,
+                    limit: PAGE_SIZE,
+                    offset: 0,
+                })
             });
 
             if (!response.ok) {
@@ -248,8 +257,9 @@ const ClientListScreen = ({ navigation }) => {
             if (data && data.clientes && Array.isArray(data.clientes)) {
                 // Debug logs removidos - datos identificados correctamente
                 
-                const sortedClients = data.clientes.sort((a, b) => b.id_cliente - a.id_cliente);
+                const sortedClients = data.clientes.sort((a, b) => Number(b.id_cliente) - Number(a.id_cliente));
                 setClientList(sortedClients);
+                setOffset(sortedClients.length); // preparar próximo offset
                 console.log('Cantidad de clientes consultados: ' + data.cantidad);
                 setClientCount(data.cantidad);
                 setFilteredClientCount(data.cantidad); // Inicialmente, todos los clientes están visibles
@@ -287,11 +297,11 @@ const ClientListScreen = ({ navigation }) => {
 
     useFocusEffect(
         React.useCallback(() => {
-            if (usuarioId) {
+            if (usuarioId && ispId && ispId !== 'No ID') {
                 fetchClientList();
             }
             return () => { };
-        }, [usuarioId])
+        }, [usuarioId, ispId])
     );
 
     const handleAddClient = () => {
@@ -462,18 +472,45 @@ const ClientListScreen = ({ navigation }) => {
         return filtered;
     }, [clientList, searchQuery, selectedEstados]);
 
-    // Mostrar solo los clientes paginados
-    const filteredClients = useMemo(() => {
-        const paginated = allFilteredClients.slice(0, displayedClients);
-        return paginated;
-    }, [allFilteredClients, displayedClients]);
+    // Los clientes filtrados son TODOS los que pasan los filtros (sin límite de visualización)
+    const filteredClients = allFilteredClients;
 
-    // Función para cargar más clientes
-    const loadMoreClients = useCallback(() => {
-        if (displayedClients < allFilteredClients.length) {
-            setDisplayedClients(prev => Math.min(prev + 50, allFilteredClients.length));
+    // Cargar más: primero intenta traer del backend; si ya tenemos todos, expande la ventana local
+    const fetchMoreClients = useCallback(async () => {
+        if (!usuarioId || !ispId || ispId === 'No ID') return;
+        if (clientList.length >= clientCount) return;
+        try {
+            const response = await fetch('https://wellnet-rd.com:444/api/lista-clientes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    usuarioId,
+                    isp_id: ispId,
+                    id_isp: ispId,
+                    limite: PAGE_SIZE,
+                    limit: PAGE_SIZE,
+                    offset,
+                }),
+            });
+            if (!response.ok) throw new Error('Error al paginar clientes');
+            const data = await response.json();
+            const newItems = (data?.clientes || []).sort((a, b) => Number(b.id_cliente) - Number(a.id_cliente));
+            if (newItems.length > 0) {
+                const existingIds = new Set(clientList.map(c => c.id_cliente));
+                const deduped = newItems.filter(c => !existingIds.has(c.id_cliente));
+                setClientList(prev => [...prev, ...deduped]);
+                setOffset(offset + newItems.length);
+            }
+        } catch (e) {
+            console.error('Error al cargar más clientes:', e);
         }
-    }, [displayedClients, allFilteredClients.length]);
+    }, [usuarioId, ispId, clientList, clientCount, offset]);
+
+    const loadMoreClients = useCallback(() => {
+        if (clientList.length < clientCount) {
+            fetchMoreClients();
+        }
+    }, [clientList.length, clientCount, fetchMoreClients]);
 
     // Función estable para manejar cambios en la búsqueda
     const handleSearchChange = useCallback((text) => {
@@ -885,7 +922,7 @@ const ClientListScreen = ({ navigation }) => {
                     <View style={styles.headerLeft}>
                         <Text style={styles.headerTitle}>Clientes</Text>
                         <Text style={styles.headerSubtitle}>
-                            Mostrando {filteredClients.length} de {allFilteredClients.length} clientes filtrados
+                            Mostrando {filteredClients.length} de {clientCount || clientList.length} clientes
                         </Text>
                     </View>
                     <View style={styles.headerActions}>
@@ -965,18 +1002,18 @@ const ClientListScreen = ({ navigation }) => {
                     ListHeaderComponent={renderHeader}
                     ListEmptyComponent={renderEmpty}
                     ListFooterComponent={() => (
-                        displayedClients < allFilteredClients.length ? (
+                        (clientList.length < clientCount) ? (
                             <TouchableOpacity
                                 style={styles.loadMoreButton}
                                 onPress={loadMoreClients}
                             >
                                 <Text style={styles.loadMoreText}>
-                                    Cargar más clientes ({allFilteredClients.length - displayedClients} restantes)
+                                    Cargar más clientes ({Math.max(clientCount - clientList.length, 0)} restantes)
                                 </Text>
                             </TouchableOpacity>
                         ) : filteredClients.length > 0 ? (
                             <Text style={styles.endOfListText}>
-                                Mostrando todos los {allFilteredClients.length} clientes
+                                Mostrando todos los {clientCount || filteredClients.length} clientes
                             </Text>
                         ) : null
                     )}

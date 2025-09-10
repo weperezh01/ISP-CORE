@@ -90,7 +90,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
       id: 'emergencia',
       nombre: '🚨 Emergencia de Red',
       descripcion: 'Alertas de emergencia críticas',
-      icono: 'emergency',
+      // 'emergency' puede no existir en algunas versiones; usar 'report'
+      icono: 'report',
       color: '#dc3545',
     },
   ];
@@ -264,7 +265,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
       <TouchableOpacity
         style={styles.plantillasButton}
         onPress={() => setShowPlantillas(!showPlantillas)}>
-        <Icon name="template" size={20} color="#6f42c1" />
+        {/* 'template' no existe en MaterialIcons de muchas versiones; usar un icono compatible */}
+        <Icon name="description" size={20} color="#6f42c1" />
         <Text style={styles.plantillasButtonText}>
           {showPlantillas ? 'Ocultar Plantillas' : 'Usar Plantilla Predefinida'}
         </Text>
@@ -323,7 +325,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
       {mensaje.length > 0 && (
         <View style={styles.previewContainer}>
           <View style={styles.previewHeader}>
-            <Icon name="preview" size={16} color="#2196f3" />
+            {/* 'preview' puede no existir en versiones antiguas; usar 'visibility' */}
+            <Icon name="visibility" size={16} color="#2196f3" />
             <Text style={styles.previewTitle}>Vista Previa del SMS</Text>
             {variables.some(v => mensaje.includes(v.key)) && (
               <Text style={styles.previewSubtitle}>

@@ -250,21 +250,26 @@ const SMSMassCampaignsScreen = () => {
       // Envío a clientes seleccionados individualmente
       const clientesIds = clientesSeleccionados.map(c => c.id_cliente);
 
-      const response = await fetch(
-        `${API_BASE}/sms-campaigns-simple/send-individual`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            clientes_ids: clientesIds,
-            titulo: titulo,
-            mensaje: mensaje,
-          }),
+      const url = `${API_BASE}/sms-campaigns-simple/send-individual${
+        ispId ? `?isp_id=${encodeURIComponent(String(ispId))}` : ''
+      }`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          'Content-Type': 'application/json',
+          ...(ispId ? { 'X-ISP-ID': String(ispId) } : {}),
         },
-      );
+        body: JSON.stringify({
+          clientes_ids: clientesIds,
+          // Campo alternativo por compatibilidad (algunos backends esperan 'ids')
+          ids: clientesIds,
+          titulo: titulo,
+          mensaje: mensaje,
+          ...(ispId ? { isp_id: ispId } : {}),
+        }),
+      });
 
       if (response.ok) {
         const data: SendResponse = await response.json();
@@ -290,8 +295,16 @@ const SMSMassCampaignsScreen = () => {
         // Limpiar formulario después de envío exitoso
         resetForm();
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error en el envío');
+        // Intentar parsear JSON; si falla, usar texto plano
+        const raw = await response.text();
+        let message = 'Error en el envío';
+        try {
+          const parsed = JSON.parse(raw);
+          message = parsed.message || message;
+        } catch (_) {
+          if (raw) message = `${message}: ${raw.substring(0, 200)}`;
+        }
+        throw new Error(message);
       }
     } catch (error) {
       console.error('❌ [SMS Campaigns] Error sending:', error);

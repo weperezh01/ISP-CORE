@@ -269,6 +269,14 @@ const getStyles = (isDarkMode) => StyleSheet.create({
         shadowRadius: 6,
         elevation: 4,
     },
+    iconRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    iconPair: {
+        marginHorizontal: 2,
+    },
 
     functionTitle: {
         fontSize: width < 400 ? 12 : 14,
@@ -374,6 +382,9 @@ const getStyles = (isDarkMode) => StyleSheet.create({
     },
     statusDotSuspended: {
         backgroundColor: colors.warning[600],
+    },
+    statusDotInfo: {
+        backgroundColor: colors.primary[600],
     },
     statusDotWarning: {
         backgroundColor: colors.warning[600],

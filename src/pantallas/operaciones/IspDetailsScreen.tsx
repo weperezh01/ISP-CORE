@@ -110,6 +110,67 @@ const IspDetailsScreen = ({ route, navigation }) => {
       dineroRecaudadoPorcentaje: 0,
     },
   });
+  const [totalesOrd, setTotalesOrd] = useState({
+    totalOrdenes: 0,
+    ordenesPendientes: 0,
+    ordenesEnProgreso: 0,
+    ordenesCompletadas: 0,
+    ordenesCanceladas: 0,
+    estadisticasRendimiento: {
+      tasaCompletado: 0,
+      horasPromedioResolucion: 0,
+    },
+    estadisticasTiempo: {
+      ordenesEsteMes: 0,
+    },
+  });
+  const [totalesCfg, setTotalesCfg] = useState({
+    totalConfiguraciones: 0,
+    configuracionesActivas: 0,
+    configuracionesIncompletas: 0,
+    configuracionRed: { porcentajeConfigurado: 0 },
+    estadisticasTiempo: { configuracionesEsteMes: 0 },
+    routersTop: [],
+  });
+  const [totalesUsr, setTotalesUsr] = useState({
+    totalUsuarios: 0,
+    activos: 0,
+    inactivos: 0,
+    roles: {},
+  });
+  const [totalesInst, setTotalesInst] = useState({
+    totalInstalaciones: 0,
+    estadisticasTiempo: { instalacionesEsteMes: 0, instalacionesHoy: 0 },
+    tracking: { conUbicacion: 0, sinUbicacion: 0 },
+    equipos: { configuradas: 0, sinConfig: 0 },
+  });
+  const [totalesSms, setTotalesSms] = useState({
+    totalSmsEnviados: 0,
+    smsExitosos: 0,
+    smsFallidos: 0,
+    smsPendientes: 0,
+    smsCancelados: 0,
+    estadisticasEnvio: {
+      tasaExito: 0,
+      tasaFallo: 0,
+      intentosPromedioEnvio: 0,
+    },
+    resumenFinanciero: {
+      costoTotal: 0,
+      costoPromedio: 0,
+      smsConCosto: 0,
+      smsSinCosto: 0,
+    },
+    estadisticasTiempo: {
+      smsEsteMes: 0,
+      smsEstaSemana: 0,
+      smsHoy: 0,
+    },
+    interactividad: {
+      mensajesEntrantes: 0,
+      tasaRespuesta: 0,
+    },
+  });
 
   // 5. Estados para animación de header
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -421,12 +482,324 @@ const totales = async (ispId) => {
       });
     }
   };
+
+  // ---------------------------------------------------------------------------
+  // Llamada a la API para obtener totales de SMS
+  // ---------------------------------------------------------------------------
+  const smsTotales = async (currentIspId) => {
+    try {
+      console.log('🔄 Llamando API totales-sms con ispId:', currentIspId);
+      const res = await axios.get(`https://wellnet-rd.com:444/api/totales-sms/${currentIspId}`, {
+        headers: { 'Accept': 'application/json' },
+        timeout: 10000,
+      });
+
+      let payload = res.data;
+      if (typeof payload === 'string') {
+        if (payload.trim().startsWith('<')) {
+          console.error('❌ API totales-sms retornó HTML');
+          return setTotalesSms({
+            ...totalesSms,
+            totalSmsEnviados: 0,
+            smsExitosos: 0,
+            smsFallidos: 0,
+            smsPendientes: 0,
+            smsCancelados: 0,
+          });
+        }
+        try { payload = JSON.parse(payload); } catch { payload = {}; }
+      }
+
+      const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
+
+      const totalSmsEnviados = body.totalSmsEnviados ?? body.total_sms_enviados ?? 0;
+      const smsExitosos = body.smsExitosos ?? body.sms_exitosos ?? 0;
+      const smsFallidos = body.smsFallidos ?? body.sms_fallidos ?? 0;
+      const smsPendientes = body.smsPendientes ?? body.sms_pendientes ?? 0;
+      const smsCancelados = body.smsCancelados ?? body.sms_cancelados ?? 0;
+
+      const ee = body.estadisticasEnvio || body.estadisticas_envio || {};
+      const estadisticasEnvio = {
+        tasaExito: ee.tasaExito ?? ee.tasa_exito ?? 0,
+        tasaFallo: ee.tasaFallo ?? ee.tasa_fallo ?? 0,
+        intentosPromedioEnvio: ee.intentosPromedioEnvio ?? ee.intentos_promedio_envio ?? 0,
+      };
+
+      const rf2 = body.resumenFinanciero || body.resumen_financiero || {};
+      const resumenFinanciero = {
+        costoTotal: rf2.costoTotal ?? rf2.costo_total ?? 0,
+        costoPromedio: rf2.costoPromedio ?? rf2.costo_promedio ?? 0,
+        smsConCosto: rf2.smsConCosto ?? rf2.sms_con_costo ?? 0,
+        smsSinCosto: rf2.smsSinCosto ?? rf2.sms_sin_costo ?? 0,
+      };
+
+      const et = body.estadisticasTiempo || body.estadisticas_tiempo || {};
+      const estadisticasTiempo = {
+        smsEsteMes: et.smsEsteMes ?? et.sms_este_mes ?? 0,
+        smsEstaSemana: et.smsEstaSemana ?? et.sms_esta_semana ?? 0,
+        smsHoy: et.smsHoy ?? et.sms_hoy ?? 0,
+      };
+
+      const inter = body.interactividad || {};
+      const interactividad = {
+        mensajesEntrantes: inter.mensajesEntrantes ?? inter.mensajes_entrantes ?? 0,
+        tasaRespuesta: inter.tasaRespuesta ?? inter.tasa_respuesta ?? 0,
+      };
+
+      setTotalesSms({
+        totalSmsEnviados, smsExitosos, smsFallidos, smsPendientes, smsCancelados,
+        estadisticasEnvio, resumenFinanciero, estadisticasTiempo, interactividad,
+      });
+      console.log('✅ Totales SMS:', { totalSmsEnviados, smsExitosos, smsFallidos, smsPendientes, smsCancelados, estadisticasEnvio, resumenFinanciero, estadisticasTiempo, interactividad });
+    } catch (e) {
+      console.error('❌ Error en totales-sms:', e.message);
+      setTotalesSms({
+        ...totalesSms,
+        totalSmsEnviados: 0,
+        smsExitosos: 0,
+        smsFallidos: 0,
+        smsPendientes: 0,
+        smsCancelados: 0,
+      });
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Llamada a la API para obtener totales de órdenes de servicio
+  // ---------------------------------------------------------------------------
+  const ordenesTotales = async (currentIspId) => {
+    try {
+      console.log('🔄 Llamando API totales-ordenes con ispId:', currentIspId);
+      const res = await axios.get(`https://wellnet-rd.com:444/api/totales-ordenes/${currentIspId}`, {
+        headers: { 'Accept': 'application/json' },
+        timeout: 10000,
+      });
+
+      let payload = res.data;
+      if (typeof payload === 'string') {
+        if (payload.trim().startsWith('<')) {
+          console.error('❌ API totales-ordenes retornó HTML');
+          return setTotalesOrd({
+            totalOrdenes: 0,
+            ordenesPendientes: 0,
+            ordenesEnProgreso: 0,
+            ordenesCompletadas: 0,
+            ordenesCanceladas: 0,
+            estadisticasRendimiento: { tasaCompletado: 0, horasPromedioResolucion: 0 },
+            estadisticasTiempo: { ordenesEsteMes: 0 },
+          });
+        }
+        try { payload = JSON.parse(payload); } catch { payload = {}; }
+      }
+
+      const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
+
+      const totalOrdenes = body.totalOrdenes ?? body.total_ordenes ?? 0;
+      const ordenesPendientes = body.ordenesPendientes ?? body.ordenes_pendientes ?? 0;
+      const ordenesEnProgreso = body.ordenesEnProgreso ?? body.ordenes_en_progreso ?? 0;
+      const ordenesCompletadas = body.ordenesCompletadas ?? body.ordenes_completadas ?? 0;
+      const ordenesCanceladas = body.ordenesCanceladas ?? body.ordenes_canceladas ?? 0;
+
+      const er = body.estadisticasRendimiento || body.estadisticas_rendimiento || {};
+      let tasaCompletado = er.tasaCompletado ?? er.tasa_completado ?? 0;
+      const horasPromedioResolucion = er.horasPromedioResolucion ?? er.horas_promedio_resolucion ?? 0;
+      if ((!tasaCompletado || Number(tasaCompletado) === 0) && totalOrdenes > 0) {
+        tasaCompletado = (ordenesCompletadas / totalOrdenes) * 100;
+      }
+
+      const et2 = body.estadisticasTiempo || body.estadisticas_tiempo || {};
+      const ordenesEsteMes = et2.ordenesEsteMes ?? et2.ordenes_este_mes ?? 0;
+
+      setTotalesOrd({
+        totalOrdenes, ordenesPendientes, ordenesEnProgreso, ordenesCompletadas, ordenesCanceladas,
+        estadisticasRendimiento: { tasaCompletado, horasPromedioResolucion },
+        estadisticasTiempo: { ordenesEsteMes },
+      });
+      console.log('✅ Totales órdenes:', { totalOrdenes, ordenesPendientes, ordenesEnProgreso, ordenesCompletadas, ordenesCanceladas, tasaCompletado, horasPromedioResolucion, ordenesEsteMes });
+    } catch (e) {
+      console.error('❌ Error en totales-ordenes:', e.message);
+      setTotalesOrd({
+        totalOrdenes: 0,
+        ordenesPendientes: 0,
+        ordenesEnProgreso: 0,
+        ordenesCompletadas: 0,
+        ordenesCanceladas: 0,
+        estadisticasRendimiento: { tasaCompletado: 0, horasPromedioResolucion: 0 },
+        estadisticasTiempo: { ordenesEsteMes: 0 },
+      });
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Llamada a la API para obtener totales de configuraciones
+  // ---------------------------------------------------------------------------
+  const configuracionesTotales = async (currentIspId) => {
+    try {
+      console.log('🔄 Llamando API totales-configuraciones con ispId:', currentIspId);
+      const res = await axios.get(`https://wellnet-rd.com:444/api/totales-configuraciones/${currentIspId}`, {
+        headers: { 'Accept': 'application/json' },
+        timeout: 10000,
+      });
+
+      let payload = res.data;
+      if (typeof payload === 'string') {
+        if (payload.trim().startsWith('<')) {
+          console.error('❌ API totales-configuraciones retornó HTML');
+          return setTotalesCfg({
+            totalConfiguraciones: 0,
+            configuracionesActivas: 0,
+            configuracionesIncompletas: 0,
+            configuracionRed: { porcentajeConfigurado: 0 },
+            estadisticasTiempo: { configuracionesEsteMes: 0 },
+          });
+        }
+        try { payload = JSON.parse(payload); } catch { payload = {}; }
+      }
+
+      const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
+
+      const totalConfiguraciones = body.totalConfiguraciones ?? body.total_configuraciones ?? 0;
+      const configuracionesActivas = body.configuracionesActivas ?? body.configuraciones_activas ?? 0;
+      const configuracionesIncompletas = body.configuracionesIncompletas ?? body.configuraciones_incompletas ?? 0;
+      const cr = body.configuracionRed || body.configuracion_red || {};
+      const porcentajeConfigurado = cr.porcentajeConfigurado ?? cr.porcentaje_configurado ?? 0;
+      const et = body.estadisticasTiempo || body.estadisticas_tiempo || {};
+      const configuracionesEsteMes = et.configuracionesEsteMes ?? et.configuraciones_este_mes ?? 0;
+      const cpr = body.configuracionesPorRouter || body.configuraciones_por_router || {};
+
+      // Calcular top de routers por configuraciones
+      const totalCfg = totalConfiguraciones || 0;
+      const routersTop = Object.entries(cpr)
+        .map(([name, count]) => ({ name, count: Number(count) || 0, pct: totalCfg > 0 ? (Number(count) * 100) / totalCfg : 0 }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
+
+      setTotalesCfg({
+        totalConfiguraciones,
+        configuracionesActivas,
+        configuracionesIncompletas,
+        configuracionRed: { porcentajeConfigurado },
+        estadisticasTiempo: { configuracionesEsteMes },
+        routersTop,
+      });
+      console.log('✅ Totales configuraciones:', { totalConfiguraciones, configuracionesActivas, configuracionesIncompletas, porcentajeConfigurado, configuracionesEsteMes, routersTop });
+    } catch (e) {
+      console.error('❌ Error en totales-configuraciones:', e.message);
+      setTotalesCfg({
+        totalConfiguraciones: 0,
+        configuracionesActivas: 0,
+        configuracionesIncompletas: 0,
+        configuracionRed: { porcentajeConfigurado: 0 },
+        estadisticasTiempo: { configuracionesEsteMes: 0 },
+        routersTop: [],
+      });
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Llamada a la API para obtener totales de instalaciones
+  // ---------------------------------------------------------------------------
+  const instalacionesTotales = async (currentIspId) => {
+    try {
+      console.log('🔄 Llamando API totales-instalaciones con ispId:', currentIspId);
+      const res = await axios.get(`https://wellnet-rd.com:444/api/totales-instalaciones/${currentIspId}`, {
+        headers: { 'Accept': 'application/json' },
+        timeout: 10000,
+      });
+
+      let payload = res.data;
+      if (typeof payload === 'string') {
+        if (payload.trim().startsWith('<')) {
+          console.error('❌ API totales-instalaciones retornó HTML');
+          return setTotalesInst({
+            totalInstalaciones: 0,
+            estadisticasTiempo: { instalacionesEsteMes: 0, instalacionesHoy: 0 },
+            tracking: { conUbicacion: 0, sinUbicacion: 0 },
+            equipos: { configuradas: 0, sinConfig: 0 },
+          });
+        }
+        try { payload = JSON.parse(payload); } catch { payload = {}; }
+      }
+
+      const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
+
+      const totalInstalaciones = body.totalInstalaciones ?? body.total_instalaciones ?? 0;
+
+      const et = body.estadisticasTiempo || body.estadisticas_tiempo || {};
+      const estadisticasTiempo = {
+        instalacionesEsteMes: et.instalacionesEsteMes ?? et.instalaciones_este_mes ?? et.esteMes ?? 0,
+        instalacionesHoy: et.instalacionesHoy ?? et.instalaciones_hoy ?? et.hoy ?? 0,
+      };
+
+      const tr = body.tracking || body.seguimiento || {};
+      const tracking = {
+        conUbicacion: tr.conUbicacion ?? tr.con_ubicacion ?? tr.geo_ok ?? 0,
+        sinUbicacion: tr.sinUbicacion ?? tr.sin_ubicacion ?? tr.geo_faltante ?? 0,
+      };
+
+      const eq = body.equipos || body.equipamiento || {};
+      const equipos = {
+        configuradas: eq.configuradas ?? eq.equiposConfigurados ?? eq.config_ok ?? 0,
+        sinConfig: eq.sinConfig ?? eq.equiposSinConfig ?? eq.config_faltante ?? 0,
+      };
+
+      setTotalesInst({ totalInstalaciones, estadisticasTiempo, tracking, equipos });
+      console.log('✅ Totales instalaciones:', { totalInstalaciones, estadisticasTiempo, tracking, equipos });
+    } catch (e) {
+      console.error('❌ Error en totales-instalaciones:', e.message);
+      setTotalesInst({
+        totalInstalaciones: 0,
+        estadisticasTiempo: { instalacionesEsteMes: 0, instalacionesHoy: 0 },
+        tracking: { conUbicacion: 0, sinUbicacion: 0 },
+        equipos: { configuradas: 0, sinConfig: 0 },
+      });
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Llamada a la API para obtener totales de usuarios
+  // ---------------------------------------------------------------------------
+  const usuariosTotales = async (currentIspId) => {
+    try {
+      console.log('🔄 Llamando API totales-usuarios con ispId:', currentIspId);
+      const res = await axios.get(`https://wellnet-rd.com:444/api/totales-usuarios/${currentIspId}`, {
+        headers: { 'Accept': 'application/json' },
+        timeout: 10000,
+      });
+
+      let payload = res.data;
+      if (typeof payload === 'string') {
+        if (payload.trim().startsWith('<')) {
+          console.error('❌ API totales-usuarios retornó HTML');
+          return setTotalesUsr({ totalUsuarios: 0, activos: 0, inactivos: 0, roles: {} });
+        }
+        try { payload = JSON.parse(payload); } catch { payload = {}; }
+      }
+
+      const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
+      const totalUsuarios = body.totalUsuarios ?? body.total_usuarios ?? 0;
+      const activos = body.activos ?? body.usuariosActivos ?? body.usuarios_activos ?? 0;
+      const inactivos = body.inactivos ?? body.usuariosInactivos ?? body.usuarios_inactivos ?? 0;
+      const roles = body.roles || {};
+
+      setTotalesUsr({ totalUsuarios, activos, inactivos, roles });
+      console.log('✅ Totales usuarios:', { totalUsuarios, activos, inactivos });
+    } catch (e) {
+      console.error('❌ Error en totales-usuarios:', e.message);
+      setTotalesUsr({ totalUsuarios: 0, activos: 0, inactivos: 0, roles: {} });
+    }
+  };
   
   useEffect(() => {
     const loadData = async () => {
       await totales(ispId);
       await conexionesTotales(ispId);
       await ciclosTotales(ispId);
+      await smsTotales(ispId);
+      await ordenesTotales(ispId);
+      await configuracionesTotales(ispId);
+      await instalacionesTotales(ispId);
+      await usuariosTotales(ispId);
       await checkAccountingSubscription(ispId);
     };
     loadData();
@@ -544,6 +917,11 @@ useFocusEffect(
                     await totales(idIsp);
                     await conexionesTotales(idIsp);
                     await ciclosTotales(idIsp);
+                    await smsTotales(idIsp);
+                    await ordenesTotales(idIsp);
+                    await configuracionesTotales(idIsp);
+                    await instalacionesTotales(idIsp);
+                    await usuariosTotales(idIsp);
                     await checkAccountingSubscription(idIsp); // Recargar estado de contabilidad
                     // await fetchOrderCounts(idIsp);
                 } else {
@@ -596,7 +974,7 @@ const botonesData = [
         screen: 'ConexionesScreen',
         params: { ispId: isp.id_isp },
         permiso: 7,
-        icon: 'wifi',
+        icon: 'router',
         color: '#FFA500',
     },
     {
@@ -626,15 +1004,13 @@ const botonesData = [
         color: '#10B981',
     },
     {
-        id: '15',
-        title: 'Facturación ISP',
-        screen: 'IspOwnerBillingDashboard',
-        params: { ispId: isp.id_isp },
-        permiso: 'owner', // Special permission for ISP owners
-        icon: 'receipt_long',
-        color: '#3B82F6',
+        id: '10',
+        title: 'Configuraciones',
+        screen: 'ConfiguracionesScreen',
+        permiso: 10,
+        icon: 'settings',
+        color: '#FFD700',
     },
-    // Este es el botón de Ordenes de Servicio, con la información de orderCountsText
     {
         id: '11',
         title: 'Ordenes de Servicio', // Se actualizará más abajo
@@ -644,6 +1020,34 @@ const botonesData = [
         icon: 'assignment',
         color: '#8A2BE2',
     },
+    {
+        id: '17',
+        title: 'Instalaciones',
+        screen: 'InstalacionForm',
+        params: { id_isp: isp.id_isp, isEditMode: false },
+        permiso: 4,
+        icon: 'handyman',
+        color: '#22A6B3',
+    },
+    {
+        id: '6',
+        title: 'Usuarios',
+        screen: 'UsuariosScreen',
+        params: { ispId },
+        permiso: 6,
+        icon: 'people',
+        color: '#FF6347',
+    },
+    {
+        id: '15',
+        title: 'Facturación ISP',
+        screen: 'IspOwnerBillingDashboard',
+        params: { ispId: isp.id_isp },
+        permiso: 'owner', // Special permission for ISP owners
+        icon: 'receipt_long',
+        color: '#3B82F6',
+    },
+    // Este es el botón de Ordenes de Servicio, con la información de orderCountsText
     {
         id: '3',
         title: 'Servicios',
@@ -661,23 +1065,6 @@ const botonesData = [
         permiso: 5,
         icon: 'videogame-asset',
         color: '#4682B4',
-    },
-    {
-        id: '6',
-        title: 'Usuarios',
-        screen: 'UsuariosScreen',
-        params: { ispId },
-        permiso: 6,
-        icon: 'people',
-        color: '#FF6347',
-    },
-    {
-        id: '10',
-        title: 'Configuraciones',
-        screen: 'ConfiguracionesScreen',
-        permiso: 10,
-        icon: 'settings',
-        color: '#FFD700',
     },
     {
         id: '13',
@@ -705,13 +1092,8 @@ const botonesData = [
   // ---------------------------------------------------------------------------
   botonesData.forEach((btn) => {
     if (btn.id === '11') {
-      if (orderCountsText) {
-        // Ej: "Ordenes de Servicio (Pendiente: 5 | En Proceso: 2)"
-        // <Text style={styles.buttonTitle}></Text>
-        btn.title = `Ordenes de Servicio \n\n ${orderCountsText}`;
-      } else {
-        btn.title = 'Ordenes de Servicio';
-      }
+      // Mantener solo el título sin subtítulo legado
+      btn.title = 'Ordenes de Servicio';
     }
   });
 
@@ -905,11 +1287,25 @@ const botonesData = [
           styles.functionIconContainer, 
           { backgroundColor: item.color || '#3B82F6' }
         ]}>
-          <Icon 
-            name={item.icon} 
-            size={28} 
-            color={isDisabled ? '#FFFFFF80' : '#FFFFFF'} 
-          />
+          {Array.isArray(item.icons) && item.icons.length > 1 ? (
+            <View style={styles.iconRow}>
+              {item.icons.map((ic, idx) => (
+                <Icon
+                  key={`ic-${idx}`}
+                  name={ic}
+                  size={24}
+                  color={isDisabled ? '#FFFFFF80' : '#FFFFFF'}
+                  style={styles.iconPair}
+                />
+              ))}
+            </View>
+          ) : (
+            <Icon 
+              name={item.icon} 
+              size={28} 
+              color={isDisabled ? '#FFFFFF80' : '#FFFFFF'} 
+            />
+          )}
         </View>
         <Text style={[
           styles.functionTitle,
@@ -917,7 +1313,7 @@ const botonesData = [
         ]}>
           {mainTitle}
         </Text>
-        {item.id !== '2' && item.id !== '7' && item.id !== '1' && subTitle.length > 0 && (
+        {item.id !== '2' && item.id !== '7' && item.id !== '1' && item.id !== '11' && item.id !== '10' && subTitle.length > 0 && (
           <Text style={[
             styles.functionSubtext,
             isDisabled && { color: '#9CA3AF' }
@@ -1089,6 +1485,297 @@ const botonesData = [
                 <Text style={[styles.metricValue, styles.metricValueWarning]}>
                   ${Number(totalesCic.resumenFinanciero?.dineroPendiente || 0).toLocaleString()}
                 </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {item.id === '16' && (
+          <View style={styles.metricsContainer}>
+            {/* Total enviados */}
+            <Text style={styles.metricSubtle}>Total enviados: {totalesSms.totalSmsEnviados || 0}</Text>
+
+            {/* Mini gráfico: Exitosos / Fallidos / Pendientes */}
+            {(() => {
+              const e = totalesSms.smsExitosos || 0;
+              const f = totalesSms.smsFallidos || 0;
+              const p = totalesSms.smsPendientes || 0;
+              const total = e + f + p;
+              return (
+                <View style={styles.miniBarTrack}>
+                  {total > 0 ? (
+                    <>
+                      {e > 0 && (<View style={[styles.miniBarSegmentActive, { flex: e }]} />)}
+                      {f > 0 && (<View style={[styles.miniBarSegmentError, { flex: f }]} />)}
+                      {p > 0 && (<View style={[styles.miniBarSegmentSuspended, { flex: p }]} />)}
+                    </>
+                  ) : (
+                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
+                  )}
+                </View>
+              );
+            })()}
+
+            {/* Tasa de éxito y actividad */}
+            <View style={styles.metricGroup}>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotActive]} />
+                <Text style={styles.metricLabel}>Tasa de éxito</Text>
+                {(() => {
+                  const pct = Number(totalesSms.estadisticasEnvio?.tasaExito || 0);
+                  const stylePct = pct >= 90
+                    ? [styles.metricValue, styles.metricValueSuccess]
+                    : (pct <= 50 ? [styles.metricValue, styles.metricValueWarning] : styles.metricValue);
+                  return (
+                    <Text style={stylePct}>
+                      {pct.toFixed(2)}%
+                    </Text>
+                  );
+                })()}
+              </View>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotInfo]} />
+                <Text style={styles.metricLabel}>Costo total</Text>
+                <Text style={styles.metricValue}>
+                  ${Number(totalesSms.resumenFinanciero?.costoTotal || 0).toLocaleString()}
+                </Text>
+              </View>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotWarning]} />
+                <Text style={styles.metricLabel}>Entrantes</Text>
+                <Text style={styles.metricValue}>{totalesSms.interactividad?.mensajesEntrantes || 0}</Text>
+              </View>
+            </View>
+
+            {/* Actividad reciente */}
+            <View style={styles.metricGroup}>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotInactive]} />
+                <Text style={styles.metricLabel}>Este mes</Text>
+                <Text style={styles.metricValue}>{totalesSms.estadisticasTiempo?.smsEsteMes || 0}</Text>
+              </View>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotInactive]} />
+                <Text style={styles.metricLabel}>Hoy</Text>
+                <Text style={styles.metricValue}>{totalesSms.estadisticasTiempo?.smsHoy || 0}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {item.id === '17' && (
+          <View style={styles.metricsContainer}>
+            {/* Total instalaciones */}
+            <Text style={styles.metricSubtle}>Total: {totalesInst.totalInstalaciones || 0}</Text>
+
+            {/* Mini gráfico: conUbicacion / sinUbicacion (fallback a equipos configurados) */}
+            {(() => {
+              const a = totalesInst.tracking?.conUbicacion ?? 0;
+              const b = totalesInst.tracking?.sinUbicacion ?? 0;
+              const useTracking = (a + b) > 0;
+              const conf = totalesInst.equipos?.configuradas ?? 0;
+              const nconf = totalesInst.equipos?.sinConfig ?? 0;
+              const total = useTracking ? (a + b) : (conf + nconf);
+              return (
+                <View style={styles.miniBarTrack}>
+                  {total > 0 ? (
+                    <>
+                      {useTracking ? (
+                        <>
+                          {a > 0 && (<View style={[styles.miniBarSegmentActive, { flex: a }]} />)}
+                          {b > 0 && (<View style={[styles.miniBarSegmentSuspended, { flex: b }]} />)}
+                        </>
+                      ) : (
+                        <>
+                          {conf > 0 && (<View style={[styles.miniBarSegmentActive, { flex: conf }]} />)}
+                          {nconf > 0 && (<View style={[styles.miniBarSegmentSuspended, { flex: nconf }]} />)}
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
+                  )}
+                </View>
+              );
+            })()}
+
+            {/* Actividad reciente */}
+            <View style={styles.metricGroup}>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotInfo]} />
+                <Text style={styles.metricLabel}>Este mes</Text>
+                <Text style={styles.metricValue}>{totalesInst.estadisticasTiempo?.instalacionesEsteMes || 0}</Text>
+              </View>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotInactive]} />
+                <Text style={styles.metricLabel}>Hoy</Text>
+                <Text style={styles.metricValue}>{totalesInst.estadisticasTiempo?.instalacionesHoy || 0}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {item.id === '6' && (
+          <View style={styles.metricsContainer}>
+            {/* Total usuarios */}
+            <Text style={styles.metricSubtle}>Total: {totalesUsr.totalUsuarios || 0}</Text>
+
+            {/* Mini gráfico: Activos / Inactivos (si hay datos) */}
+            {(() => {
+              const a = totalesUsr.activos || 0;
+              const i = totalesUsr.inactivos || 0;
+              const total = a + i;
+              if (total === 0) return null;
+              return (
+                <View style={styles.miniBarTrack}>
+                  {a > 0 && (<View style={[styles.miniBarSegmentActive, { flex: a }]} />)}
+                  {i > 0 && (<View style={[styles.miniBarSegmentInactive, { flex: i }]} />)}
+                </View>
+              );
+            })()}
+          </View>
+        )}
+
+        {item.id === '10' && (
+          <View style={styles.metricsContainer}>
+            {/* Total configuraciones */}
+            <Text style={styles.metricSubtle}>Total: {totalesCfg.totalConfiguraciones || 0}</Text>
+
+            {/* Mini gráfico: Activas / Incompletas / Sin config */}
+            {(() => {
+              const act = totalesCfg.configuracionesActivas || 0;
+              const inc = totalesCfg.configuracionesIncompletas || 0;
+              const total = totalesCfg.totalConfiguraciones || 0;
+              const sin = Math.max(total - act - inc, 0);
+              const sum = act + inc + sin;
+              return (
+                <View style={styles.miniBarTrack}>
+                  {sum > 0 ? (
+                    <>
+                      {act > 0 && (<View style={[styles.miniBarSegmentActive, { flex: act }]} />)}
+                      {inc > 0 && (<View style={[styles.miniBarSegmentSuspended, { flex: inc }]} />)}
+                      {sin > 0 && (<View style={[styles.miniBarSegmentError, { flex: sin }]} />)}
+                    </>
+                  ) : (
+                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
+                  )}
+                </View>
+              );
+            })()}
+
+            {/* Eficiencia y actividad */}
+            <View style={styles.metricGroup}>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotActive]} />
+                <Text style={styles.metricLabel}>Eficiencia</Text>
+                {(() => {
+                  const pct = Number(totalesCfg.configuracionRed?.porcentajeConfigurado || 0);
+                  const stylePct = pct >= 95
+                    ? [styles.metricValue, styles.metricValueSuccess]
+                    : (pct <= 80 ? [styles.metricValue, styles.metricValueWarning] : styles.metricValue);
+                  return (
+                    <Text style={stylePct}>
+                      {pct.toFixed(2)}%
+                    </Text>
+                  );
+                })()}
+              </View>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotInfo]} />
+                <Text style={styles.metricLabel}>Este mes</Text>
+                <Text style={styles.metricValue}>{totalesCfg.estadisticasTiempo?.configuracionesEsteMes || 0}</Text>
+              </View>
+            </View>
+
+            {/* Distribución por router (Top 3) */}
+            {totalesCfg.routersTop && totalesCfg.routersTop.length > 0 && (
+              <View style={styles.metricGroup}>
+                {totalesCfg.routersTop.map((r, idx) => (
+                  <View key={`router-row-${idx}`} style={styles.metricRow}>
+                    <View style={[
+                      styles.statusDot,
+                      (idx === 0 && r.pct >= 60) ? styles.statusDotWarning : styles.statusDotInfo,
+                    ]} />
+                    <Text style={styles.metricLabel}>{r.name}</Text>
+                    <Text style={r.pct >= 60 ? [styles.metricValue, styles.metricValueWarning] : styles.metricValue}>
+                      {r.count} ({r.pct.toFixed(1)}%)
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {item.id === '11' && (
+          <View style={styles.metricsContainer}>
+            {/* Total órdenes */}
+            <Text style={styles.metricSubtle}>Total: {totalesOrd.totalOrdenes || 0}</Text>
+
+            {/* Mini gráfico: Completadas / Pendientes / Canceladas */}
+            {(() => {
+              const comp = totalesOrd.ordenesCompletadas || 0;
+              const pend = totalesOrd.ordenesPendientes || 0;
+              const canc = totalesOrd.ordenesCanceladas || 0;
+              const total = comp + pend + canc;
+              return (
+                <View style={styles.miniBarTrack}>
+                  {total > 0 ? (
+                    <>
+                      {comp > 0 && (<View style={[styles.miniBarSegmentActive, { flex: comp }]} />)}
+                      {pend > 0 && (<View style={[styles.miniBarSegmentSuspended, { flex: pend }]} />)}
+                      {canc > 0 && (<View style={[styles.miniBarSegmentError, { flex: canc }]} />)}
+                    </>
+                  ) : (
+                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
+                  )}
+                </View>
+              );
+            })()}
+
+            {/* Tasa completado y Promedio resolución */}
+            <View style={styles.metricGroup}>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotActive]} />
+                <Text style={styles.metricLabel}>Tasa completado</Text>
+                {(() => {
+                  const pct = Number(totalesOrd.estadisticasRendimiento?.tasaCompletado || 0);
+                  const stylePct = pct >= 80
+                    ? [styles.metricValue, styles.metricValueSuccess]
+                    : (pct <= 50 ? [styles.metricValue, styles.metricValueWarning] : styles.metricValue);
+                  return (
+                    <Text style={stylePct}>
+                      {pct.toFixed(2)}%
+                    </Text>
+                  );
+                })()}
+              </View>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotInfo]} />
+                <Text style={styles.metricLabel}>Prom. resolución</Text>
+                {(() => {
+                  const horas = Number(totalesOrd.estadisticasRendimiento?.horasPromedioResolucion || 0);
+                  const dias = horas / 24;
+                  return (
+                    <Text style={styles.metricValue}>
+                      {dias >= 1 ? `${dias.toFixed(2)} días` : `${horas.toFixed(1)} h`}
+                    </Text>
+                  );
+                })()}
+              </View>
+            </View>
+
+            {/* Backlog y actividad */}
+            <View style={styles.metricGroup}>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotWarning]} />
+                <Text style={styles.metricLabel}>Backlog</Text>
+                <Text style={[styles.metricValue, styles.metricValueWarning]}>{totalesOrd.ordenesPendientes || 0}</Text>
+              </View>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotInactive]} />
+                <Text style={styles.metricLabel}>Este mes</Text>
+                <Text style={styles.metricValue}>{totalesOrd.estadisticasTiempo?.ordenesEsteMes || 0}</Text>
               </View>
             </View>
           </View>

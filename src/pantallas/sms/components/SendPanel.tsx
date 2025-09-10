@@ -47,7 +47,9 @@ const SendPanel: React.FC<SendPanelProps> = ({
 
   const { smsCount, costoEstimado, segmentosPorMensaje } = calcularCosto();
 
-  const isReadyToSend = grupoSeleccionado && totalClientes > 0 && titulo.trim() && mensaje.trim();
+  // Permitir envío cuando hay clientes seleccionados manualmente, aun sin grupo
+  const isReadyToSend = totalClientes > 0 && !!titulo.trim() && !!mensaje.trim();
+  const grupoLabel = grupoSeleccionado?.nombre || 'Selección manual';
 
   return (
     <View style={styles.container}>
@@ -62,7 +64,7 @@ const SendPanel: React.FC<SendPanelProps> = ({
         <View style={styles.summaryRow}>
           <Icon name="group" size={16} color="#2196f3" />
           <Text style={styles.summaryLabel}>Grupo:</Text>
-          <Text style={styles.summaryValue}>{grupoSeleccionado?.nombre || 'No seleccionado'}</Text>
+          <Text style={styles.summaryValue}>{grupoLabel}</Text>
         </View>
 
         <View style={styles.summaryRow}>
