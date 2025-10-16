@@ -433,24 +433,57 @@ const ClientListScreen = ({ navigation }) => {
         }
     };
 
+    // Función para normalizar texto (eliminar acentos y espacios extra)
+    const normalizeText = (text) => {
+        if (!text) return '';
+        return text
+            .toString()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Eliminar acentos
+            .replace(/\s+/g, ' ') // Reemplazar múltiples espacios por uno solo
+            .trim();
+    };
+
     // Filtrar todos los clientes
     const allFilteredClients = useMemo(() => {
         if (clientList.length === 0) return [];
-        
-        const filtered = clientList.filter((client) => {
-            const query = searchQuery.toLowerCase();
 
-            // Filtrar por texto de búsqueda
+        const filtered = clientList.filter((client) => {
+            const query = normalizeText(searchQuery);
+
+            // Si no hay búsqueda, pasar al filtro de estados
+            if (!query) {
+                // Filtrar por estados seleccionados
+                const matchesEstados =
+                    selectedEstados.length === 0 ||
+                    (client.conexiones && client.conexiones.length > 0 &&
+                        client.conexiones.some((conexion) =>
+                            selectedEstados.includes(conexion.id_estado_conexion)
+                        ));
+                return matchesEstados;
+            }
+
+            // Construir nombre completo normalizado
+            const nombreCompleto = normalizeText(`${client.nombres || ''} ${client.apellidos || ''}`);
+            const nombresNormalizado = normalizeText(client.nombres);
+            const apellidosNormalizado = normalizeText(client.apellidos);
+            const cedulaNormalizada = normalizeText(client.cedula);
+
+            // Filtrar por texto de búsqueda con lógica mejorada
             const matchesSearchQuery =
-                !searchQuery ||
-                (client.nombres && client.nombres.toLowerCase().includes(query)) ||
-                (client.apellidos && client.apellidos.toLowerCase().includes(query)) ||
-                client.id_cliente.toString().includes(query) ||
-                (client.cedula && client.cedula.toLowerCase().includes(query)) ||
-                (client.telefono1 && client.telefono1.includes(query)) ||
+                nombreCompleto.includes(query) || // Buscar en nombre completo
+                nombresNormalizado.includes(query) || // Buscar en nombres
+                apellidosNormalizado.includes(query) || // Buscar en apellidos
+                client.id_cliente.toString().includes(searchQuery) || // ID sin normalizar
+                cedulaNormalizada.includes(query) ||
+                (client.telefono1 && client.telefono1.includes(searchQuery)) || // Teléfono sin normalizar
+                (client.telefono2 && client.telefono2.includes(searchQuery)) ||
+                (client.email && normalizeText(client.email).includes(query)) ||
                 (client.conexiones && client.conexiones.some((conexion) =>
-                    conexion.id_conexion.toString().includes(query) || // Buscar por ID de conexión
-                    (conexion.direccion_ip && conexion.direccion_ip.toLowerCase().includes(query)) // Buscar por IP
+                    conexion.id_conexion.toString().includes(searchQuery) ||
+                    (conexion.direccion_ip && conexion.direccion_ip.toLowerCase().includes(searchQuery)) ||
+                    (conexion.direccion && normalizeText(conexion.direccion).includes(query))
                 ));
 
             // Filtrar por estados seleccionados

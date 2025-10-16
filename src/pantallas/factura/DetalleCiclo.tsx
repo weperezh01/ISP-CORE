@@ -70,6 +70,13 @@ const DetalleCiclo = ({ route }) => {
     const [produccion, setProduccion] = useState([]);
     const [facturasCobradas, setFacturasCobradas] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [estadisticasConexiones, setEstadisticasConexiones] = useState({
+        totalConexiones: 0,
+        conexionesActivas: 0,
+        conexionesSuspendidas: 0,
+        conexionesInactivas: 0,
+        detalleEstados: []
+    });
 
     // Estados para permisos
     const [vista, setVista] = useState('basica');
@@ -139,6 +146,26 @@ const DetalleCiclo = ({ route }) => {
         };
         if (ciclo && ciclo.id_ciclo) {
             obtenerProduccion();
+        }
+    }, [ciclo]);
+
+    useEffect(() => {
+        const obtenerEstadisticasConexiones = async () => {
+            try {
+                const response = await axios.post(
+                    'https://wellnet-rd.com:444/api/conexiones/estadisticas-por-ciclo',
+                    { id_ciclo: ciclo.id_ciclo }
+                );
+                console.log('Estadísticas de conexiones obtenidas:', response.data);
+                if (response.data.success && response.data.data) {
+                    setEstadisticasConexiones(response.data.data);
+                }
+            } catch (error) {
+                console.error('Error al obtener estadísticas de conexiones:', error);
+            }
+        };
+        if (ciclo && ciclo.id_ciclo) {
+            obtenerEstadisticasConexiones();
         }
     }, [ciclo]);
 
@@ -591,6 +618,44 @@ const DetalleCiclo = ({ route }) => {
                                 <View style={styles.statusItem}>
                                     <Text style={styles.statusNumber}>{ciclo.facturas_pendiente || 0}</Text>
                                     <Text style={styles.statusLabel}>Pendientes</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Estadísticas de Conexiones */}
+                        <View style={styles.card}>
+                            <View style={styles.cardHeader}>
+                                <View style={styles.cardIconContainer}>
+                                    <Icon name="router" size={24} color="#FFFFFF" />
+                                </View>
+                                <View style={styles.cardHeaderContent}>
+                                    <Text style={styles.cardTitle}>Estadísticas de Conexiones</Text>
+                                    <Text style={styles.cardSubtitle}>Estado de las conexiones del ciclo</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.statusContainer}>
+                                <View style={styles.statusItem}>
+                                    <Text style={styles.statusNumber}>{estadisticasConexiones.totalConexiones}</Text>
+                                    <Text style={styles.statusLabel}>Total</Text>
+                                </View>
+                                <View style={styles.statusItem}>
+                                    <Text style={[styles.statusNumber, { color: '#10B981' }]}>
+                                        {estadisticasConexiones.conexionesActivas}
+                                    </Text>
+                                    <Text style={styles.statusLabel}>Activas</Text>
+                                </View>
+                                <View style={styles.statusItem}>
+                                    <Text style={[styles.statusNumber, { color: '#F59E0B' }]}>
+                                        {estadisticasConexiones.conexionesSuspendidas}
+                                    </Text>
+                                    <Text style={styles.statusLabel}>Suspendidas</Text>
+                                </View>
+                                <View style={styles.statusItem}>
+                                    <Text style={[styles.statusNumber, { color: '#6B7280' }]}>
+                                        {estadisticasConexiones.conexionesInactivas}
+                                    </Text>
+                                    <Text style={styles.statusLabel}>Inactivas</Text>
                                 </View>
                             </View>
                         </View>
