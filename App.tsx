@@ -8,6 +8,7 @@ import ConfigScreen from './src/pantallas/ConfigScreen';
 import BluetoothDeviceListScreen from './src/pantallas/BluetoothDeviceListScreen';
 import FacturacionesScreen from './src/pantallas/factura/Facturaciones';
 import DetalleCicloScreen from './src/pantallas/factura/DetalleCiclo';
+import ConexionesCicloScreen from './src/pantallas/factura/ConexionesCicloScreen';
 import FacturasPendientesScreen from './src/pantallas/FacturasPendientes';
 import DetallesFacturaScreen from './src/pantallas/DetallesFactura';
 import ReciboScreen from './src/pantallas/ReciboScreen';
@@ -26,6 +27,7 @@ import AsignacionServicioClienteScreen from './src/pantallas/AsignacionServicioC
 import BaseCicloScreen from './src/pantallas/BaseCicloScreen';
 import AddCicloBase from './src/pantallas/AddCicloBase';
 import ConexionesScreen from './src/pantallas/conexiones/ConexionesScreen';
+import ConexionesEstadisticasScreen from './src/pantallas/conexiones/ConexionesEstadisticasScreen';
 import ConexionesActivas from './src/pantallas/conexiones/ConexionesActivas';
 import ConexionesAveriadas from './src/pantallas/conexiones/ConexionesAveriadas';
 import ConexionesBajaBoluntaria from './src/pantallas/conexiones/ConexionesBajaBoluntaria';
@@ -40,6 +42,9 @@ import ControlDevicesScreen from './src/pantallas/controles/ControlDevicesScreen
 import RouterListScreen from './src/pantallas/controles/Routers/RouterListScreen';
 import AddRouterScreen from './src/pantallas/controles/Routers/AddRouterScreen';
 import RouterDetailsScreen from './src/pantallas/controles/Routers/RouterDetailsScreen';
+import OLTsListScreen from './src/pantallas/controles/OLTs/OLTsListScreen';
+import OLTDetailsScreen from './src/pantallas/controles/OLTs/OLTDetailsScreen';
+import ONUsListScreen from './src/pantallas/controles/OLTs/ONUsListScreen';
 import InterfaceDetailsScreen from './src/pantallas/controles/Routers/InterfaceDetailsScreen';
 import AddVlanScreen from './src/pantallas/controles/Routers/AddVlanScreen';
 import AddIpAddressScreen from './src/pantallas/controles/Routers/AddIpAddressScreen';
@@ -184,6 +189,11 @@ const App = () => {
                 options={{ headerShown: false }}
               />
               <Stack.Screen
+                name="ConexionesCicloScreen"
+                component={ConexionesCicloScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
                 name="FacturasPendientesScreen"
                 component={FacturasPendientesScreen}
                 options={{ headerShown: false }}
@@ -261,6 +271,10 @@ const App = () => {
                 component={ConexionesScreen}
                 options={{ headerShown: false }} />
               <Stack.Screen
+                name="ConexionesEstadisticasScreen"
+                component={ConexionesEstadisticasScreen}
+                options={{ headerShown: false }} />
+              <Stack.Screen
                 name="ConexionesActivas"
                 component={ConexionesActivas}
                 options={{ headerShown: false }} />
@@ -307,6 +321,18 @@ const App = () => {
               <Stack.Screen
                 name="RouterListScreen"
                 component={RouterListScreen}
+                options={{ headerShown: false }} />
+              <Stack.Screen
+                name="OLTsListScreen"
+                component={OLTsListScreen}
+                options={{ headerShown: false }} />
+              <Stack.Screen
+                name="OLTDetailsScreen"
+                component={OLTDetailsScreen}
+                options={{ headerShown: false }} />
+              <Stack.Screen
+                name="ONUsListScreen"
+                component={ONUsListScreen}
                 options={{ headerShown: false }} />
               <Stack.Screen
                 name="AddRouterScreen"

@@ -673,6 +673,12 @@ const ConexionesScreen = ({ navigation }) => {
         { id: '8', title: 'Filtrar', screen: 'ClientListScreen', icon: 'filter-list', action: toggleModal },
         { id: '5', title: 'Agregar', screen: 'ClientListScreen', icon: 'add' },
         {
+            id: '9',
+            title: 'Estadísticas',
+            screen: 'ConexionesEstadisticasScreen',
+            icon: 'bar-chart',
+        },
+        {
             id: '7',
             title: 'Tipos de conexión',
             screen: 'TiposDeConexionScreen',
