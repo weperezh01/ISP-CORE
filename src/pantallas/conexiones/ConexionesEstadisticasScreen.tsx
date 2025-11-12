@@ -1,10 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
-import { LineChart } from 'react-native-chart-kit';
+import Svg, { G, Line as SvgLine, Path, Rect, Circle, Text as SvgText } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../../ThemeContext';
 import { getStyles } from './ConexionesEstadisticasStyles';
 import { fetchEstadisticasConexiones } from './services/estadisticasApi';
+
+const clamp = (value: number, min: number, max: number) => {
+    return Math.min(Math.max(value, min), max);
+};
+
+const getNiceStep = (roughStep: number) => {
+    if (!isFinite(roughStep) || roughStep <= 0) {
+        return 10;
+    }
+    const exponent = Math.floor(Math.log10(roughStep));
+    const base = Math.pow(10, exponent);
+    const multiples = [1, 2, 5, 10];
+    const candidate = multiples.find(multiple => roughStep <= multiple * base) || 10;
+    return candidate * base;
+};
+
+const buildAxis = (values: number[], tickTarget = 5) => {
+    if (!values.length) {
+        return {
+            min: 0,
+            max: 100,
+            ticks: [0, 25, 50, 75, 100]
+        };
+    }
+
+    const rawMin = Math.min(...values);
+    const rawMax = Math.max(...values);
+    const range = rawMax - rawMin;
+    const padding = Math.max(20, Math.round(range * 0.1));
+    let min = Math.max(0, rawMin - padding);
+    let max = rawMax + padding;
+
+    const roughStep = (max - min) / Math.max(tickTarget - 1, 1);
+    const niceStep = getNiceStep(roughStep);
+    min = Math.floor(min / niceStep) * niceStep;
+    max = Math.ceil(max / niceStep) * niceStep;
+
+    const ticks: number[] = [];
+    for (let tick = min; tick <= max; tick += niceStep) {
+        ticks.push(tick);
+    }
+
+    return { min, max, ticks };
+};
+
+type SerieKey = 'total' | 'activas' | 'suspendidas' | 'bajas';
 
 const ConexionesEstadisticasScreen = ({ navigation }) => {
     const { isDarkMode } = useTheme();
@@ -16,6 +62,12 @@ const ConexionesEstadisticasScreen = ({ navigation }) => {
     const [estadisticas, setEstadisticas] = useState(null);
     const [periodoSeleccionado, setPeriodoSeleccionado] = useState('mes'); // año, mes, semana, dia
     const [errorFechaFutura, setErrorFechaFutura] = useState(false);
+    const [seriesVisibility, setSeriesVisibility] = useState({
+        total: true,
+        activas: true,
+        suspendidas: true,
+        bajas: true,
+    });
 
     // Estados para las fechas seleccionadas
     // Inicializar con la fecha actual del sistema para mostrar datos recientes
@@ -292,6 +344,25 @@ const ConexionesEstadisticasScreen = ({ navigation }) => {
     );
 
     const renderGrafica = () => {
+        const toggleSerie = (key: SerieKey) => {
+            setSeriesVisibility(prev => {
+                const keysWithData = (['total', 'activas', 'suspendidas', 'bajas'] as SerieKey[]).filter(serieKey => {
+                    if (!estadisticas) {
+                        return false;
+                    }
+                    const dataSource = serieKey === 'total' ? estadisticas.total : estadisticas[serieKey];
+                    return Array.isArray(dataSource) && dataSource.length > 0;
+                });
+
+                const activeCount = keysWithData.filter(serieKey => prev[serieKey]).length;
+                if (prev[key] && activeCount <= 1) {
+                    return prev;
+                }
+
+                return { ...prev, [key]: !prev[key] };
+            });
+        };
+
         if (!estadisticas || !estadisticas.labels || estadisticas.labels.length === 0) {
             return (
                 <View style={styles.emptyChartContainer}>
@@ -300,229 +371,331 @@ const ConexionesEstadisticasScreen = ({ navigation }) => {
             );
         }
 
-        // Construir datasets dinámicamente según qué datos están disponibles
-        const datasets = [];
-        const legend = [];
-
-        // Total (siempre disponible)
-        if (estadisticas.total && estadisticas.total.length > 0) {
-            datasets.push({
-                data: estadisticas.total,
-                color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`, // Azul - Total
-                strokeWidth: 2
-            });
-            legend.push('Total');
-        }
-
-        // Activas (Etapa 2 - opcional)
-        if (estadisticas.activas && estadisticas.activas.length > 0) {
-            datasets.push({
-                data: estadisticas.activas,
-                color: (opacity = 1) => `rgba(34, 197, 94, ${opacity})`, // Verde - Activas
-                strokeWidth: 2
-            });
-            legend.push('Activas');
-        }
-
-        // Suspendidas (Etapa 3 - opcional)
-        if (estadisticas.suspendidas && estadisticas.suspendidas.length > 0) {
-            datasets.push({
-                data: estadisticas.suspendidas,
-                color: (opacity = 1) => `rgba(251, 146, 60, ${opacity})`, // Naranja - Suspendidas
-                strokeWidth: 2
-            });
-            legend.push('Suspendidas');
-        }
-
-        // Bajas (Etapa 4 - opcional)
-        if (estadisticas.bajas && estadisticas.bajas.length > 0) {
-            datasets.push({
-                data: estadisticas.bajas,
-                color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`, // Rojo - Bajas
-                strokeWidth: 2
-            });
-            legend.push('Bajas');
-        }
-
-        const chartData = {
-            labels: estadisticas.labels,
-            datasets: datasets,
-            legend: legend
-        };
-
-        // Calcular rango óptimo del eje Y con padding
-        const calculateYAxisRange = (data) => {
-            const max = Math.max(...data);
-            const min = Math.min(...data);
-            const range = max - min;
-
-            // Si el rango es muy pequeño, usar padding fijo
-            const padding = range < 100 ? 50 : Math.ceil(range * 0.2);
-
-            // Redondear a múltiplos de 100 para ticks limpios
-            const yMin = Math.floor((min - padding) / 100) * 100;
-            const yMax = Math.ceil((max + padding) / 100) * 100;
-
-            return { yMin: Math.max(0, yMin), yMax, range: yMax - yMin };
-        };
-
-        const yAxisRange = calculateYAxisRange(datasets[0].data);
-
-        const chartConfig = {
-            backgroundGradientFrom: isDarkMode ? '#1F2937' : '#FFFFFF',
-            backgroundGradientTo: isDarkMode ? '#1F2937' : '#FFFFFF',
-            color: (opacity = 1) => isDarkMode ? `rgba(255, 255, 255, ${opacity})` : `rgba(0, 0, 0, ${opacity})`,
-            strokeWidth: 2,
-            barPercentage: 0.5,
-            useShadowColorFromDataset: false,
-            decimalPlaces: 0,
-            propsForDots: {
-                r: '5',
-                strokeWidth: '2',
+        const serieConfiguracion = [
+            {
+                key: 'total' as SerieKey,
+                label: 'Total',
+                color: '#3B82F6',
+                strokeWidth: 3,
+                data: estadisticas.total || []
             },
-            propsForBackgroundLines: {
-                strokeDasharray: '', // solid lines
-                stroke: isDarkMode ? '#374151' : '#E5E7EB',
-                strokeWidth: 1
+            {
+                key: 'activas' as SerieKey,
+                label: 'Activas',
+                color: '#22C55E',
+                strokeWidth: 2,
+                data: estadisticas.activas || []
             },
-            propsForLabels: {
-                fontSize: 10
+            {
+                key: 'suspendidas' as SerieKey,
+                label: 'Suspendidas',
+                color: '#F97316',
+                strokeWidth: 2,
+                data: estadisticas.suspendidas || []
             },
-            formatYLabel: (value) => {
-                // Formatear con separador de miles
-                return Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            {
+                key: 'bajas' as SerieKey,
+                label: 'Bajas',
+                color: '#EF4444',
+                strokeWidth: 2,
+                data: estadisticas.bajas || []
             }
+        ].filter(serie => Array.isArray(serie.data) && serie.data.length > 0);
+
+        if (!serieConfiguracion.length) {
+            return (
+                <View style={styles.emptyChartContainer}>
+                    <Text style={styles.emptyChartText}>📈 Aún no hay datos disponibles para graficar</Text>
+                </View>
+            );
+        }
+
+        const seriesActivas = serieConfiguracion.filter(serie => seriesVisibility[serie.key]);
+        const seriesParaRender = seriesActivas.length ? seriesActivas : serieConfiguracion;
+        const valoresEscala = seriesParaRender
+            .flatMap(serie => serie.data)
+            .filter(value => typeof value === 'number');
+
+        const axis = buildAxis(valoresEscala, 6);
+        const isPantallaChica = screenWidth < 420;
+        const chartHeight = isPantallaChica ? 450 : 600;
+        const baseWidth = screenWidth - 16;
+        const chartWidth = Math.max(baseWidth, estadisticas.labels.length * 90);
+        const margin = { top: 28, right: 36, bottom: 48, left: 56 };
+        const drawWidth = chartWidth - margin.left - margin.right;
+        const drawHeight = chartHeight - margin.top - margin.bottom;
+        const dominio = axis.max - axis.min || 1;
+        const gridColor = isDarkMode ? '#374151' : '#E5E7EB';
+        const axisTextColor = isDarkMode ? '#CBD5F5' : '#4B5563';
+        const labelBackground = isDarkMode ? 'rgba(31, 41, 55, 0.95)' : '#FFFFFF';
+        const labelBorder = isDarkMode ? '#4B5563' : '#D1D5DB';
+        const labelTextColor = isDarkMode ? '#F9FAFB' : '#111827';
+
+        const getX = (index: number) => {
+            if (estadisticas.labels.length <= 1) {
+                return margin.left + drawWidth / 2;
+            }
+            return margin.left + (drawWidth * index) / (estadisticas.labels.length - 1);
         };
 
-        // Detectar si es pantalla pequeña (móvil)
-        const isPantallaChica = screenWidth < 420;
-        const chartHeight = 360;
-        const chartWidth = Math.max(screenWidth - 16, estadisticas.labels.length * 70);
+        const getY = (value: number) => {
+            return margin.top + drawHeight - ((value - axis.min) / dominio) * drawHeight;
+        };
 
-        // Calcular posiciones de las etiquetas
+        const renderLinePath = (serie) => {
+            let path = '';
+            let segmentoAbierto = false;
+            serie.data.forEach((value, index) => {
+                if (value === null || value === undefined) {
+                    segmentoAbierto = false;
+                    return;
+                }
+                const x = getX(index);
+                const y = getY(value);
+                if (!segmentoAbierto) {
+                    path += `M ${x} ${y}`;
+                    segmentoAbierto = true;
+                } else {
+                    path += ` L ${x} ${y}`;
+                }
+            });
+
+            if (!path) {
+                return null;
+            }
+
+            return (
+                <Path
+                    key={`path-${serie.key}`}
+                    d={path}
+                    fill="none"
+                    stroke={serie.color}
+                    strokeWidth={serie.strokeWidth}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                />
+            );
+        };
+
+        const renderDots = (serie) => {
+            return serie.data.map((value, index) => {
+                if (value === null || value === undefined) {
+                    return null;
+                }
+                const x = getX(index);
+                const y = getY(value);
+                const radius = serie.key === 'total' ? (isPantallaChica ? 4 : 5) : 3;
+                return (
+                    <Circle
+                        key={`dot-${serie.key}-${index}`}
+                        cx={x}
+                        cy={y}
+                        r={radius}
+                        fill={isDarkMode ? '#111827' : '#FFFFFF'}
+                        stroke={serie.color}
+                        strokeWidth={2}
+                    />
+                );
+            });
+        };
+
         const renderEtiquetas = () => {
-            // Parámetros de react-native-chart-kit LineChart
-            const paddingTop = 16;
-            const paddingRight = 64;
-            const paddingBottom = 40;
-            const paddingLeft = 16;
+            const labelSeries = serieConfiguracion.filter(serie => seriesVisibility[serie.key]);
 
-            const drawWidth = chartWidth - paddingLeft - paddingRight;
-            const drawHeight = chartHeight - paddingTop - paddingBottom;
+            if (!labelSeries.length) {
+                return null;
+            }
 
-            const dataMax = Math.max(...datasets[0].data);
-            const dataMin = Math.min(...datasets[0].data);
-            const dataRange = dataMax - dataMin || 1;
+            const shouldShowDelta = true;
+            const etiquetas: React.ReactNode[] = [];
+            const ultimaSuperior: Record<SerieKey, { x: number; y: number } | null> = {
+                total: null,
+                activas: null,
+                suspendidas: null,
+                bajas: null
+            };
+            const ultimaInferior: Record<SerieKey, { x: number; y: number } | null> = {
+                total: null,
+                activas: null,
+                suspendidas: null,
+                bajas: null
+            };
 
-            return datasets[0].data.map((value, index) => {
-                const etiquetaWidth = isPantallaChica ? 38 : 44;
-                const deltaWidth = isPantallaChica ? 40 : 48;
-
-                // Calcular posición X
-                const xRatio = datasets[0].data.length > 1
-                    ? index / (datasets[0].data.length - 1)
-                    : 0.5;
-                const cx = paddingLeft + (xRatio * drawWidth);
-
-                // Calcular posición Y (invertida)
-                const yRatio = (value - dataMin) / dataRange;
-                const cy = paddingTop + drawHeight - (yRatio * drawHeight);
-
-                // Calcular diferencia con punto anterior
-                let diferencia = 0;
-                let flechaColor = '#6B7280';
-                let flecha = '';
-
-                if (index > 0) {
-                    diferencia = value - datasets[0].data[index - 1];
-                    if (diferencia > 0) {
-                        flechaColor = '#22C55E';
-                        flecha = '↑';
-                    } else if (diferencia < 0) {
-                        flechaColor = '#EF4444';
-                        flecha = '↓';
-                    } else {
-                        flechaColor = '#9CA3AF';
-                        flecha = '=';
-                    }
+            const getLabelTheme = (key: SerieKey) => {
+                if (key === 'activas') {
+                    return {
+                        background: isDarkMode ? 'rgba(6, 95, 70, 0.9)' : '#ECFDF5',
+                        border: '#34D399',
+                        text: isDarkMode ? '#D1FAE5' : '#065F46'
+                    };
                 }
 
-                return (
-                    <View key={`label-${index}`}>
-                        {/* Etiqueta superior: Valor total */}
-                        <View
-                            style={{
-                                position: 'absolute',
-                                left: cx - etiquetaWidth / 2,
-                                top: cy - (isPantallaChica ? 24 : 30),
-                                width: etiquetaWidth,
-                                height: 20,
-                                backgroundColor: isDarkMode ? 'rgba(31, 41, 55, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-                                borderRadius: 6,
-                                borderWidth: 1,
-                                borderColor: isDarkMode ? '#4B5563' : '#E5E7EB',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                shadowColor: '#000',
-                                shadowOffset: { width: 0, height: 1 },
-                                shadowOpacity: 0.1,
-                                shadowRadius: 2,
-                                elevation: 2,
-                            }}
-                        >
-                            <Text
-                                style={{
-                                    fontSize: isPantallaChica ? 9 : 11,
-                                    fontWeight: '700',
-                                    color: isDarkMode ? '#F9FAFB' : '#111827',
-                                }}
-                            >
-                                {value.toLocaleString()}
-                            </Text>
-                        </View>
+                if (key === 'suspendidas') {
+                    return {
+                        background: isDarkMode ? 'rgba(120, 53, 15, 0.85)' : '#FFF7ED',
+                        border: '#FB923C',
+                        text: isDarkMode ? '#FED7AA' : '#7C2D12'
+                    };
+                }
 
-                        {/* Etiqueta inferior: Delta */}
-                        {index > 0 && (
-                            <View
-                                style={{
-                                    position: 'absolute',
-                                    left: cx - deltaWidth / 2,
-                                    top: cy + (isPantallaChica ? 6 : 10),
-                                    minWidth: deltaWidth,
-                                    height: 18,
-                                    backgroundColor: flechaColor === '#22C55E'
-                                        ? 'rgba(236, 253, 245, 0.95)'
-                                        : flechaColor === '#EF4444'
-                                        ? 'rgba(254, 242, 242, 0.95)'
-                                        : 'rgba(249, 250, 251, 0.95)',
-                                    borderRadius: 6,
-                                    borderWidth: 1,
-                                    borderColor: flechaColor,
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
-                                    paddingHorizontal: 6,
-                                    shadowColor: '#000',
-                                    shadowOffset: { width: 0, height: 1 },
-                                    shadowOpacity: 0.08,
-                                    shadowRadius: 2,
-                                    elevation: 1,
-                                }}
-                            >
-                                <Text
-                                    style={{
-                                        fontSize: isPantallaChica ? 9 : 10,
-                                        fontWeight: '700',
-                                        color: flechaColor,
-                                    }}
+                if (key === 'bajas') {
+                    return {
+                        background: isDarkMode ? 'rgba(127, 29, 29, 0.85)' : '#FEF2F2',
+                        border: '#EF4444',
+                        text: isDarkMode ? '#FCA5A5' : '#7F1D1D'
+                    };
+                }
+
+                return {
+                    background: labelBackground,
+                    border: labelBorder,
+                    text: labelTextColor
+                };
+            };
+
+            labelSeries.forEach(serie => {
+                const theme = getLabelTheme(serie.key);
+                serie.data.forEach((value, index) => {
+                    if (value === null || value === undefined) {
+                        return;
+                    }
+                    const x = getX(index);
+                    const y = getY(value);
+                    const valorTexto = Number(value).toLocaleString('es-ES');
+                    const labelHeight = 20;
+                    const labelWidth = Math.max(48, valorTexto.length * 7 + 14);
+                    const labelX = clamp(x - labelWidth / 2, margin.left - 10, chartWidth - margin.right - labelWidth + 10);
+                    const labelY = clamp(y - labelHeight - 8, margin.top + 2, chartHeight - margin.bottom - labelHeight - 8);
+                    const prevLabel = ultimaSuperior[serie.key];
+
+                    if (!prevLabel || Math.abs(labelX - prevLabel.x) >= 18 || Math.abs(labelY - prevLabel.y) >= 18) {
+                        etiquetas.push(
+                            <G key={`label-top-${serie.key}-${index}`}>
+                                <Rect
+                                    x={labelX}
+                                    y={labelY}
+                                    width={labelWidth}
+                                    height={labelHeight}
+                                    rx={6}
+                                    ry={6}
+                                    fill={theme.background}
+                                    stroke={theme.border}
+                                    strokeWidth={1}
+                                />
+                                <SvgText
+                                    x={labelX + labelWidth / 2}
+                                    y={labelY + labelHeight / 2 + 0.5}
+                                    fontSize={isPantallaChica ? 10 : 11}
+                                    fontWeight="700"
+                                    fill={theme.text}
+                                    textAnchor="middle"
+                                    alignmentBaseline="middle"
                                 >
-                                    {flecha} {Math.abs(diferencia)}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                );
-            }).filter(Boolean);
+                                    {valorTexto}
+                                </SvgText>
+                            </G>
+                        );
+                        ultimaSuperior[serie.key] = { x: labelX, y: labelY };
+                    }
+
+                    if (index === 0 || !shouldShowDelta) {
+                        return;
+                    }
+
+                    const previo = serie.data[index - 1];
+                    if (previo === null || previo === undefined) {
+                        return;
+                    }
+
+                    const diferencia = value - previo;
+                    const arrow = diferencia > 0 ? '↑' : diferencia < 0 ? '↓' : '→';
+                    const deltaColor = diferencia > 0 ? '#16A34A' : diferencia < 0 ? '#DC2626' : '#6B7280';
+                    const signo = diferencia > 0 ? '+' : diferencia < 0 ? '-' : '';
+                    const deltaNumero = Math.abs(diferencia).toLocaleString('es-ES');
+                    const deltaTexto = diferencia === 0 ? '→ 0' : `${arrow} ${signo}${deltaNumero}`;
+                    const deltaFill = diferencia > 0
+                        ? 'rgba(34, 197, 94, 0.12)'
+                        : diferencia < 0
+                        ? 'rgba(248, 113, 113, 0.12)'
+                        : isDarkMode
+                        ? 'rgba(148, 163, 184, 0.25)'
+                        : 'rgba(243, 244, 246, 0.95)';
+                    const deltaHeight = 18;
+                    const deltaWidth = Math.max(46, deltaTexto.length * 7 + 12);
+                    const deltaX = clamp(x - deltaWidth / 2, margin.left - 10, chartWidth - margin.right - deltaWidth + 10);
+                    const deltaY = clamp(y + 8, margin.top + 4, chartHeight - margin.bottom - deltaHeight - 4);
+                    const prevDelta = ultimaInferior[serie.key];
+
+                    if (!prevDelta || Math.abs(deltaX - prevDelta.x) >= 18 || Math.abs(deltaY - prevDelta.y) >= 18) {
+                        etiquetas.push(
+                            <G key={`label-bottom-${serie.key}-${index}`}>
+                                <Rect
+                                    x={deltaX}
+                                    y={deltaY}
+                                    width={deltaWidth}
+                                    height={deltaHeight}
+                                    rx={6}
+                                    ry={6}
+                                    fill={deltaFill}
+                                    stroke={deltaColor}
+                                    strokeWidth={1}
+                                />
+                                <SvgText
+                                    x={deltaX + deltaWidth / 2}
+                                    y={deltaY + deltaHeight / 2 + 0.5}
+                                    fontSize={10}
+                                    fontWeight="700"
+                                    fill={deltaColor}
+                                    textAnchor="middle"
+                                    alignmentBaseline="middle"
+                                >
+                                    {deltaTexto}
+                                </SvgText>
+                            </G>
+                        );
+                        ultimaInferior[serie.key] = { x: deltaX, y: deltaY };
+                    }
+                });
+            });
+
+            return etiquetas;
         };
+
+        const renderLegend = () => (
+            <View style={styles.legendContainer}>
+                <View style={styles.legendRow}>
+                    {serieConfiguracion.map(serie => (
+                        <TouchableOpacity
+                            key={serie.key}
+                            style={[
+                                styles.legendItem,
+                                seriesVisibility[serie.key] ? styles.legendItemActive : styles.legendItemInactive
+                            ]}
+                            onPress={() => toggleSerie(serie.key)}
+                            activeOpacity={0.8}
+                        >
+                            <View
+                                style={[
+                                    styles.legendColor,
+                                    {
+                                        backgroundColor: serie.color,
+                                        opacity: seriesVisibility[serie.key] ? 1 : 0.25
+                                    }
+                                ]}
+                            />
+                            <Text
+                                style={[
+                                    styles.legendText,
+                                    seriesVisibility[serie.key] ? styles.legendTextActive : styles.legendTextInactive
+                                ]}
+                            >
+                                {serie.label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </View>
+        );
 
         return (
             <View style={styles.chartContainer}>
@@ -532,64 +705,80 @@ const ConexionesEstadisticasScreen = ({ navigation }) => {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingRight: 24 }}
                 >
-                    <View>
-                        <LineChart
-                            data={chartData}
+                    <Svg width={chartWidth} height={chartHeight}>
+                        <Rect
+                            x={0}
+                            y={0}
                             width={chartWidth}
                             height={chartHeight}
-                            chartConfig={chartConfig}
-                            style={styles.chart}
-                            withInnerLines={true}
-                            withOuterLines={true}
-                            withVerticalLines={true}
-                            withHorizontalLines={true}
-                            withVerticalLabels={true}
-                            withHorizontalLabels={true}
-                            withDots={true}
-                            withShadow={false}
-                            fromZero={false}
-                            segments={5}
+                            rx={12}
+                            ry={12}
+                            fill={isDarkMode ? '#111827' : '#FFFFFF'}
                         />
-                        {/* Etiquetas superpuestas */}
-                        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-                            {renderEtiquetas()}
-                        </View>
-                    </View>
+                        {/* Líneas horizontales del eje Y */}
+                        {axis.ticks.map((tick, index) => {
+                            const y = getY(tick);
+                            return (
+                                <G key={`y-${tick}-${index}`}>
+                                    <SvgLine
+                                        x1={margin.left}
+                                        y1={y}
+                                        x2={chartWidth - margin.right}
+                                        y2={y}
+                                        stroke={gridColor}
+                                        strokeWidth={1}
+                                        strokeDasharray="4 4"
+                                    />
+                                    <SvgText
+                                        x={margin.left - 8}
+                                        y={y + 4}
+                                        fontSize={11}
+                                        fill={axisTextColor}
+                                        textAnchor="end"
+                                    >
+                                        {tick.toLocaleString('es-ES')}
+                                    </SvgText>
+                                </G>
+                            );
+                        })}
+
+                        {/* Eje X y etiquetas */}
+                        {estadisticas.labels.map((label, index) => {
+                            const x = getX(index);
+                            return (
+                                <G key={`x-${label}-${index}`}>
+                                    <SvgLine
+                                        x1={x}
+                                        y1={margin.top}
+                                        x2={x}
+                                        y2={chartHeight - margin.bottom}
+                                        stroke={gridColor}
+                                        strokeWidth={0.5}
+                                        strokeDasharray="2 6"
+                                    />
+                                    <SvgText
+                                        x={x}
+                                        y={chartHeight - margin.bottom + 18}
+                                        fontSize={11}
+                                        fill={axisTextColor}
+                                        textAnchor="middle"
+                                    >
+                                        {label}
+                                    </SvgText>
+                                </G>
+                            );
+                        })}
+
+                        {/* Líneas */}
+                        {seriesParaRender.map(serie => renderLinePath(serie))}
+                        {seriesParaRender.map(serie => renderDots(serie))}
+
+                        {/* Etiquetas personalizadas */}
+                        {renderEtiquetas()}
+                    </Svg>
                 </ScrollView>
 
-                {/* Leyenda dinámica */}
-                <View style={styles.legendContainer}>
-                    <View style={styles.legendRow}>
-                        {estadisticas.total && estadisticas.total.length > 0 && (
-                            <View style={styles.legendItem}>
-                                <View style={[styles.legendColor, { backgroundColor: 'rgba(59, 130, 246, 1)' }]} />
-                                <Text style={styles.legendText}>Total</Text>
-                            </View>
-                        )}
-                        {estadisticas.activas && estadisticas.activas.length > 0 && (
-                            <View style={styles.legendItem}>
-                                <View style={[styles.legendColor, { backgroundColor: 'rgba(34, 197, 94, 1)' }]} />
-                                <Text style={styles.legendText}>Activas</Text>
-                            </View>
-                        )}
-                    </View>
-                    {(estadisticas.suspendidas?.length > 0 || estadisticas.bajas?.length > 0) && (
-                        <View style={styles.legendRow}>
-                            {estadisticas.suspendidas && estadisticas.suspendidas.length > 0 && (
-                                <View style={styles.legendItem}>
-                                    <View style={[styles.legendColor, { backgroundColor: 'rgba(251, 146, 60, 1)' }]} />
-                                    <Text style={styles.legendText}>Suspendidas</Text>
-                                </View>
-                            )}
-                            {estadisticas.bajas && estadisticas.bajas.length > 0 && (
-                                <View style={styles.legendItem}>
-                                    <View style={[styles.legendColor, { backgroundColor: 'rgba(239, 68, 68, 1)' }]} />
-                                    <Text style={styles.legendText}>Bajas</Text>
-                                </View>
-                            )}
-                        </View>
-                    )}
-                </View>
+                {renderLegend()}
             </View>
         );
     };

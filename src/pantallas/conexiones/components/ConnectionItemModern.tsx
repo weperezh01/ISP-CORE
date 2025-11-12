@@ -120,14 +120,17 @@ const ConnectionItemModern = ({ item, styles, navigation, onPress, realtimeData,
 
     const formatClientName = (cliente) => {
         if (!cliente) return 'Cliente no asignado';
-        const nombres = cliente.nombres || '';
-        const apellidos = cliente.apellidos || '';
+        // Soportar ambos formatos: nombres/apellidos y nombre/apellido
+        const nombres = cliente.nombres || cliente.nombre || '';
+        const apellidos = cliente.apellidos || cliente.apellido || '';
         return `${nombres} ${apellidos}`.trim() || 'Sin nombre';
     };
 
-    const formatSpeed = (velocidad) => {
-        if (!velocidad) return 'No especificada';
-        return `${velocidad} Mbps`;
+    const formatSpeed = (velocidad, servicio) => {
+        // Intentar obtener la velocidad desde varios lugares
+        const speed = velocidad || servicio?.velocidad_servicio || servicio?.velocidad;
+        if (!speed) return 'No especificada';
+        return `${speed} Mbps`;
     };
 
     const formatIP = () => {
@@ -216,10 +219,16 @@ const ConnectionItemModern = ({ item, styles, navigation, onPress, realtimeData,
                         <Text style={[styles.detailValue, { fontSize: 13, marginBottom: 2 }]} numberOfLines={1}>
                             👤 {item.cliente ? formatClientName(item.cliente) : `Cliente ID: ${item.id_cliente || 'No asignado'}`}
                         </Text>
-                        
-                        <Text style={[styles.detailValue, { fontSize: 12, opacity: 0.8 }]} numberOfLines={1}>
-                            🌐 {formatIP()}
-                        </Text>
+
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={[styles.detailValue, { fontSize: 12, opacity: 0.8, marginRight: 6 }]} numberOfLines={1}>
+                                ⚡ {formatSpeed(item.velocidad, item.servicio)}
+                            </Text>
+                            <Text style={[styles.detailValue, { fontSize: 12, opacity: 0.6, marginRight: 6 }]}>•</Text>
+                            <Text style={[styles.detailValue, { fontSize: 12, opacity: 0.8 }]} numberOfLines={1}>
+                                {formatMonthlyPrice(item.servicio)}
+                            </Text>
+                        </View>
                     </View>
 
                     {/* Lado derecho: Velocidades RT y botón expandir */}
@@ -486,7 +495,7 @@ const ConnectionItemModern = ({ item, styles, navigation, onPress, realtimeData,
                         </View>
                         <View style={styles.detailContent}>
                             <Text style={styles.detailLabel}>Velocidad</Text>
-                            <Text style={styles.detailValue}>{formatSpeed(item.velocidad)}</Text>
+                            <Text style={styles.detailValue}>{formatSpeed(item.velocidad, item.servicio)}</Text>
                         </View>
                     </View>
 

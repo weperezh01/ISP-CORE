@@ -97,7 +97,6 @@ const getStyles = (isDarkMode) => StyleSheet.create({
 
     // Content area
     contentContainer: {
-        flex: 1,
         paddingHorizontal: 16,
         paddingTop: 20,
         paddingBottom: 100,
@@ -179,12 +178,28 @@ const getStyles = (isDarkMode) => StyleSheet.create({
         flex: 1,
     },
 
+    invoiceHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+        gap: 8,
+    },
+
     invoiceNumber: {
         fontSize: 18,
         fontWeight: '700',
         color: isDarkMode ? colors.gray[100] : colors.gray[900],
-        marginBottom: 4,
         letterSpacing: -0.3,
+    },
+
+    // Notes preview container
+    notesPreviewContainer: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderTopWidth: 1,
+        borderTopColor: isDarkMode ? colors.gray[700] : colors.gray[200],
+        maxWidth: '100%',
     },
 
     invoiceStatus: {

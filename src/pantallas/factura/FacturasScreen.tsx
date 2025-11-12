@@ -7,6 +7,8 @@ import HorizontalMenu from '../../componentes/HorizontalMenu';
 import MenuModal from '../../componentes/MenuModal';
 import { useTheme } from '../../../ThemeContext';
 import getStyles from '../FacturasScreenStyles';
+import NotesPreview from './Cards/NotesPreview';
+import type { FacturaListItem } from './types';
 
 const FacturasScreen = () => {
     // Definición de estados locales para manejar datos, errores y otros parámetros
@@ -172,14 +174,15 @@ const FacturasScreen = () => {
     }, [id_ciclo, activeFilter, filteredFacturas.length]);
 
     // Función de renderizado para FlatList
-    const renderInvoiceItem = useCallback(({ item }) => (
+    const renderInvoiceItem = useCallback(({ item }: { item: FacturaListItem }) => (
         <TouchableOpacity
             style={styles.invoiceCard}
-            onPress={() => navigation.navigate('DetalleFacturaPantalla', { 
-                id_factura: item.id_factura, 
-                factura: item, 
-                isDarkMode: isDarkMode, 
-                id_cliente: item.id_cliente 
+            onPress={() => navigation.navigate('DetalleFacturaPantalla', {
+                id_factura: item.id_factura,
+                factura: item,
+                isDarkMode: isDarkMode,
+                id_cliente: item.id_cliente,
+                focus: 'notas', // Para scroll automático a notas
             })}
             activeOpacity={0.7}
         >
@@ -188,11 +191,29 @@ const FacturasScreen = () => {
                     <Icon name="receipt-long" size={24} color="#FFFFFF" />
                 </View>
                 <View style={styles.invoiceHeaderContent}>
-                    <Text style={styles.invoiceNumber}>Factura #{item.id_factura}</Text>
+                    <View style={styles.invoiceHeaderRow}>
+                        <Text style={styles.invoiceNumber}>Factura #{item.id_factura}</Text>
+                    </View>
                     <Text style={[styles.invoiceStatus, getStatusStyle(item.estado)]}>
                         {item.estado || 'Pendiente'}
                     </Text>
                 </View>
+            </View>
+
+            {/* Preview de Notas */}
+            <View style={styles.notesPreviewContainer}>
+                <NotesPreview
+                    notes={item.notes_preview}
+                    totalCount={item.notes_count}
+                    isDarkMode={isDarkMode}
+                    onPress={() => navigation.navigate('DetalleFacturaPantalla', {
+                        id_factura: item.id_factura,
+                        factura: item,
+                        isDarkMode: isDarkMode,
+                        id_cliente: item.id_cliente,
+                        focus: 'notas',
+                    })}
+                />
             </View>
 
             <View style={styles.invoiceDetails}>

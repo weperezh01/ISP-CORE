@@ -623,7 +623,11 @@ const DetalleCiclo = ({ route }) => {
                         </View>
 
                         {/* Estadísticas de Conexiones */}
-                        <View style={styles.card}>
+                        <TouchableOpacity
+                            style={styles.card}
+                            onPress={() => navigation.navigate('ConexionesCicloScreen', { id_ciclo: ciclo.id_ciclo })}
+                            activeOpacity={0.7}
+                        >
                             <View style={styles.cardHeader}>
                                 <View style={styles.cardIconContainer}>
                                     <Icon name="router" size={24} color="#FFFFFF" />
@@ -632,6 +636,7 @@ const DetalleCiclo = ({ route }) => {
                                     <Text style={styles.cardTitle}>Estadísticas de Conexiones</Text>
                                     <Text style={styles.cardSubtitle}>Estado de las conexiones del ciclo</Text>
                                 </View>
+                                <Icon name="chevron-right" size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
                             </View>
 
                             <View style={styles.statusContainer}>
@@ -658,7 +663,7 @@ const DetalleCiclo = ({ route }) => {
                                     <Text style={styles.statusLabel}>Inactivas</Text>
                                 </View>
                             </View>
-                        </View>
+                        </TouchableOpacity>
 
                         {/* Información Financiera */}
                         <View style={styles.card}>

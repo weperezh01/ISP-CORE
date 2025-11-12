@@ -222,7 +222,8 @@ const ControlDevicesScreen = ({ route }) => {
         if (deviceId === 'routers') {
             // navigation.navigate('RouterListScreen');
             navigation.navigate('RouterListScreen', { id_usuario: usuarioId });
-
+        } else if (deviceId === 'olts') {
+            navigation.navigate('OLTsListScreen', { id_usuario: usuarioId });
         } else {
             console.log("Device pressed:", deviceId);
         }

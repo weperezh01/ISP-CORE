@@ -364,6 +364,86 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         flex: 1,
     },
 
+    clientInfoLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: isDarkMode ? colors.gray[400] : colors.gray[600],
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 4,
+    },
+
+    clientAddressBlock: {
+        padding: 12,
+        borderRadius: 12,
+    },
+
+    clientAddressPressable: {
+        borderWidth: 1,
+        borderColor: isDarkMode ? colors.primary[700] : colors.primary[100],
+        backgroundColor: isDarkMode ? 'rgba(37, 99, 235, 0.1)' : 'rgba(37, 99, 235, 0.06)',
+    },
+
+    clientAddressHint: {
+        marginTop: 8,
+        fontSize: 11,
+        fontWeight: '600',
+        color: isDarkMode ? colors.primary[100] : colors.primary[600],
+        textTransform: 'uppercase',
+        letterSpacing: 0.6,
+    },
+
+    detailSubList: {
+        marginTop: 8,
+        gap: 6,
+    },
+
+    detailSubItem: {
+        paddingLeft: 12,
+        borderLeftWidth: 2,
+        borderLeftColor: isDarkMode ? colors.gray[600] : colors.gray[200],
+    },
+
+    detailSubLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: isDarkMode ? colors.gray[500] : colors.gray[500],
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+
+    detailSubValue: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: isDarkMode ? colors.gray[100] : colors.gray[800],
+        marginTop: 2,
+    },
+
+    phoneButton: {
+        marginTop: 6,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: isDarkMode ? colors.primary[700] : colors.primary[200],
+        backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
+    },
+
+    phoneButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: isDarkMode ? colors.primary[100] : colors.primary[700],
+    },
+
+    phoneButtonHint: {
+        marginTop: 2,
+        fontSize: 11,
+        fontWeight: '600',
+        color: isDarkMode ? colors.primary[200] : colors.primary[600],
+        textTransform: 'uppercase',
+        letterSpacing: 0.6,
+    },
+
     // Table styles - Modern design
     tableContainer: {
         backgroundColor: isDarkMode ? colors.gray[700] : colors.gray[50],
@@ -788,5 +868,241 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
     statusOverdue: {
         backgroundColor: colors.error[100],
         color: colors.error[700],
+    },
+
+    // Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    modalContent: {
+        backgroundColor: isDarkMode ? colors.gray[800] : '#FFFFFF',
+        borderRadius: 20,
+        padding: 24,
+        width: '90%',
+        maxHeight: '80%',
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 10,
+    },
+
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: isDarkMode ? colors.gray[100] : colors.gray[900],
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+
+    textInput: {
+        borderWidth: 2,
+        borderColor: isDarkMode ? colors.gray[600] : colors.gray[300],
+        borderRadius: 12,
+        padding: 14,
+        fontSize: 16,
+        color: isDarkMode ? colors.gray[100] : colors.gray[900],
+        backgroundColor: isDarkMode ? colors.gray[700] : colors.gray[50],
+        minHeight: 100,
+        textAlignVertical: 'top',
+        marginBottom: 20,
+    },
+
+    checklistItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: isDarkMode ? colors.gray[700] : colors.gray[50],
+        borderRadius: 12,
+        marginBottom: 10,
+    },
+
+    checklistLabel: {
+        fontSize: 16,
+        color: isDarkMode ? colors.gray[200] : colors.gray[800],
+        fontWeight: '500',
+    },
+
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 20,
+        gap: 12,
+    },
+
+    modalButton: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    cancelButton: {
+        backgroundColor: colors.error[500],
+    },
+
+    acceptButton: {
+        backgroundColor: colors.success[600],
+    },
+
+    modalButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+
+    addressModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+
+    addressModalCard: {
+        width: '100%',
+        backgroundColor: isDarkMode ? colors.gray[800] : '#FFFFFF',
+        borderRadius: 20,
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 10,
+    },
+
+    addressModalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: isDarkMode ? colors.gray[100] : colors.gray[900],
+        marginBottom: 6,
+    },
+
+    addressModalSubtitle: {
+        fontSize: 15,
+        color: isDarkMode ? colors.gray[200] : colors.gray[700],
+        marginBottom: 8,
+    },
+
+    addressModalCoords: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: isDarkMode ? colors.primary[100] : colors.primary[600],
+        marginBottom: 16,
+    },
+
+    addressModalButtons: {
+        gap: 12,
+        marginBottom: 16,
+    },
+
+    addressModalButton: {
+        paddingVertical: 12,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+
+    addressModalPrimary: {
+        backgroundColor: colors.primary[600],
+    },
+
+    addressModalSecondary: {
+        backgroundColor: isDarkMode ? colors.gray[700] : colors.gray[100],
+    },
+
+    addressModalButtonText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+
+    addressModalSecondaryText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: isDarkMode ? colors.gray[100] : colors.gray[800],
+    },
+
+    addressModalCancel: {
+        textAlign: 'center',
+        color: isDarkMode ? colors.gray[300] : colors.gray[600],
+        fontWeight: '600',
+    },
+
+    phoneModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+
+    phoneModalCard: {
+        width: '100%',
+        backgroundColor: isDarkMode ? colors.gray[800] : '#FFFFFF',
+        borderRadius: 20,
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 10,
+    },
+
+    phoneModalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: isDarkMode ? colors.gray[100] : colors.gray[900],
+        marginBottom: 6,
+    },
+
+    phoneModalNumber: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: isDarkMode ? colors.primary[100] : colors.primary[700],
+        marginBottom: 16,
+    },
+
+    phoneModalButtons: {
+        gap: 12,
+        marginBottom: 16,
+    },
+
+    phoneModalButton: {
+        paddingVertical: 12,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+
+    phoneModalPrimary: {
+        backgroundColor: colors.primary[600],
+    },
+
+    phoneModalSecondary: {
+        backgroundColor: isDarkMode ? colors.gray[700] : colors.gray[100],
+    },
+
+    phoneModalButtonText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+
+    phoneModalSecondaryText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: isDarkMode ? colors.gray[100] : colors.gray[800],
+    },
+
+    phoneModalCancel: {
+        textAlign: 'center',
+        color: isDarkMode ? colors.gray[300] : colors.gray[600],
+        fontWeight: '600',
     },
 });

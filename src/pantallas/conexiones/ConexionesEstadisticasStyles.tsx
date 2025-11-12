@@ -171,12 +171,17 @@ export const getStyles = (isDarkMode: boolean) => StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-around',
         marginBottom: 12,
+        flexWrap: 'wrap',
     },
     legendItem: {
         flexDirection: 'row',
         alignItems: 'center',
         flex: 1,
         justifyContent: 'center',
+        paddingVertical: 4,
+        borderRadius: 999,
+        marginHorizontal: 4,
+        marginBottom: 8,
     },
     legendColor: {
         width: 16,
@@ -188,6 +193,18 @@ export const getStyles = (isDarkMode: boolean) => StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
         color: isDarkMode ? '#D1D5DB' : '#374151',
+    },
+    legendItemActive: {
+        backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
+    },
+    legendItemInactive: {
+        opacity: 0.6,
+    },
+    legendTextActive: {
+        color: isDarkMode ? '#F9FAFB' : '#111827',
+    },
+    legendTextInactive: {
+        color: isDarkMode ? '#6B7280' : '#9CA3AF',
     },
     navegadorFechas: {
         flexDirection: 'row',

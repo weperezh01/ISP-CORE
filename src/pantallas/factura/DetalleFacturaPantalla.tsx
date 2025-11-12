@@ -9,6 +9,9 @@ import {
     Share,
     Linking,
     Platform,
+    Modal,
+    TextInput,
+    FlatList,
 } from 'react-native';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
@@ -525,6 +528,8 @@ function handleShareFactura(facturaData) {
 const DetalleFacturaPantalla = () => {
     const route = useRoute();
     const navigation = useNavigation();
+    const scrollViewRef = React.useRef(null);
+
     const [facturaData, setFacturaData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -536,6 +541,7 @@ const DetalleFacturaPantalla = () => {
     const id_factura = route.params?.id_factura;
     const id_ciclo = route.params?.id_ciclo;
     const id_usuario = route.params?.id_usuario;
+    const focus = route.params?.focus;
 
     const [notaRevisada, setNotaRevisada] = useState('');
     const [notaActual, setNotaActual] = useState(null);
@@ -556,6 +562,16 @@ const DetalleFacturaPantalla = () => {
         cantidad_articulo: 1,
         precio_unitario: 0,
     });
+
+    // Estados para el modal de nota
+    const [modalNotaVisible, setModalNotaVisible] = useState(false);
+    const [nota, setNota] = useState('');
+    const [checklist, setChecklist] = useState([
+        { id: 1, label: 'Factura en revisión', checked: false },
+        { id: 2, label: 'Pago parcial', checked: false },
+        { id: 3, label: 'Pendiente de aprobación', checked: false }
+    ]);
+    const [ispId, setIspId] = useState(null);
 
 
     // Toggle tema
@@ -696,6 +712,100 @@ const DetalleFacturaPantalla = () => {
         loadSelectedPrinter(setSelectedPrinter);
     }, []);
 
+    // Obtener ISP ID
+    useEffect(() => {
+        const obtenerIspId = async () => {
+            try {
+                const ispIdValue = await AsyncStorage.getItem('@selectedIspId');
+                if (ispIdValue) {
+                    setIspId(ispIdValue);
+                }
+            } catch (error) {
+                console.error('Error al recuperar el ID del ISP', error);
+            }
+        };
+        obtenerIspId();
+    }, []);
+
+    // Toggle checklist item
+    const toggleChecklistItem = (id) => {
+        setChecklist(prevChecklist =>
+            prevChecklist.map(item =>
+                item.id === id ? { ...item, checked: !item.checked } : item
+            )
+        );
+    };
+
+    // Función para guardar nota
+    const guardarNota = async () => {
+        if (!nota.trim()) {
+            Alert.alert('Error', 'La nota no puede estar vacía.');
+            return;
+        }
+
+        try {
+            // 1. Guardar la nota
+            const responseNota = await fetch('https://wellnet-rd.com:444/api/guardar-nota-factura', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    nota,
+                    id_usuario: idUsuario,
+                    id_factura: id_factura,
+                    id_recibo: 0,
+                    fecha: new Date().toISOString().split('T')[0],
+                    hora: new Date().toLocaleTimeString('en-GB')
+                })
+            });
+
+            const notaData = await responseNota.json();
+
+            if (!responseNota.ok) {
+                throw new Error('Error al guardar la nota');
+            }
+
+            const idNota = notaData.id_nota;
+            Alert.alert('Nota guardada', 'La nota ha sido guardada exitosamente.');
+            setNota('');
+            setModalNotaVisible(false);
+
+            // 2. Registrar la revisión de la factura con el id_nota recién creado
+            const facturaEnRevision = checklist.find(item => item.id === 1).checked;
+            if (facturaEnRevision) {
+                const responseRevision = await fetch('https://wellnet-rd.com:444/api/registrar-revision', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        id_usuario: idUsuario,
+                        id_factura: id_factura,
+                        id_nota: idNota,
+                        id_isp: ispId
+                    })
+                });
+
+                const revisionData = await responseRevision.json();
+                if (responseRevision.ok) {
+                    Alert.alert('Revisión actualizada', revisionData.message);
+                } else {
+                    throw new Error(revisionData.message || 'Error al registrar la revisión');
+                }
+            }
+
+            // Recargar los detalles de la factura para mostrar la nueva nota
+            const response = await axios.post('https://wellnet-rd.com:444/api/consulta-facturas-cobradas-por-id_factura', {
+                id_factura,
+            });
+            setFacturaData(response.data);
+        } catch (error) {
+            console.error('Error al guardar la nota o registrar la revisión:', error);
+            Alert.alert('Error', 'No se pudo guardar la nota o actualizar la revisión.');
+        }
+    };
+
     // Acciones sobre notas
     const handlePressNotaPendiente = (nota) => {
         setNotaActual(nota);
@@ -707,6 +817,33 @@ const DetalleFacturaPantalla = () => {
     const handleCerrarModal = () => {
         setModalNotaRevisionVisible(false);
     };
+
+    // Wrapper para guardar nota de revisión
+    const handleGuardarNotaRevisionWrapper = async () => {
+        await handleGuardarNotaRevision(
+            notaRevisada,
+            notaActual,
+            facturaData,
+            idUsuario,
+            setFacturaData,
+            setModalNotaRevisionVisible,
+            setNotaRevisada,
+            setNotaMarcadaComoRevisada,
+            setNotaActual,
+            notaMarcadaComoRevisada
+        );
+    };
+
+    // Scroll automático a sección de notas cuando focus === 'notas'
+    useEffect(() => {
+        if (focus === 'notas' && !loading && facturaData && scrollViewRef.current) {
+            // Pequeño delay para asegurar que el layout esté completo
+            const timer = setTimeout(() => {
+                scrollViewRef.current?.scrollToEnd({ animated: true });
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [focus, loading, facturaData]);
 
     const styles = getStyles(isDarkMode);
 
@@ -741,7 +878,8 @@ const DetalleFacturaPantalla = () => {
         { id: '4', screen: null, action: () => setMenuVisible(true), icon: 'menu' },
         { id: '9', icon: 'attach-money', action: () => navigation.navigate('ClienteFacturasScreen', {  clientId: facturaData?.cliente?.id_cliente, usuarioId: id_usuario  }) },
         // { id: '9', screen: null, action: () => setMenuVisible(true), icon: 'money' },
-        { id: '5', screen: 'BusquedaScreen', icon: 'search' },
+        { id: '5', icon: 'person', action: () => navigation.navigate('ClientDetailsScreen', { clientId: facturaData?.cliente?.id_cliente }) },
+        { id: '10', icon: 'note-add', action: () => setModalNotaVisible(true) },
         { id: '1', icon: 'add', action: () => navigation.navigate('AgregarArticuloPantalla', { id_factura, facturaData }) },
         {
             id: '6',
@@ -816,7 +954,7 @@ const DetalleFacturaPantalla = () => {
                 notaMarcadaComoRevisada={notaMarcadaComoRevisada}
                 setNotaMarcadaComoRevisada={setNotaMarcadaComoRevisada}
                 handleCerrarModal={handleCerrarModal}
-                handleGuardarNotaRevision={handleGuardarNotaRevision}
+                handleGuardarNotaRevision={handleGuardarNotaRevisionWrapper}
             />
 
             {/* Modal del Menú */}
@@ -842,7 +980,57 @@ const DetalleFacturaPantalla = () => {
                 toggleTheme={toggleTheme}
             />
 
-            <ScrollView 
+            {/* Modal de Nota */}
+            <Modal
+                visible={modalNotaVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setModalNotaVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Escribe una Nota</Text>
+                        <TextInput
+                            style={styles.textInput}
+                            placeholder="Escribe la nota aquí..."
+                            placeholderTextColor={isDarkMode ? '#ccc' : '#666'}
+                            multiline={true}
+                            value={nota}
+                            onChangeText={setNota}
+                        />
+
+                        {/* Checklist */}
+                        <FlatList
+                            data={checklist}
+                            keyExtractor={item => item.id.toString()}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity onPress={() => toggleChecklistItem(item.id)} style={styles.checklistItem}>
+                                    <Text style={styles.checklistLabel}>{item.label}</Text>
+                                    <Text>{item.checked ? '✔️' : '⬜'}</Text>
+                                </TouchableOpacity>
+                            )}
+                        />
+
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.cancelButton]}
+                                onPress={() => setModalNotaVisible(false)}
+                            >
+                                <Text style={styles.modalButtonText}>Cancelar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.acceptButton]}
+                                onPress={guardarNota}
+                            >
+                                <Text style={styles.modalButtonText}>Aceptar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            <ScrollView
+                ref={scrollViewRef}
                 style={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContainer}

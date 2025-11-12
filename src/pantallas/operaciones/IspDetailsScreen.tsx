@@ -1097,12 +1097,17 @@ const botonesData = [
     }
   });
 
+  // Ocultar datos numéricos si el usuario es Operador
+  const esOperador = nivelUsuario && nivelUsuario.toUpperCase() === 'OPERADOR';
+
   botonesData.forEach((btn) => {
-    if (btn.id === '2') {
-      // Restaurar el título con el formato de texto anterior (mismas letras)
-      btn.title = `Clientes\n\nTotal: ${totalesIsp.totalClientes || 0}\n\nActivos: ${totalesIsp.clientesActivos || 0}\nFact. Vencidas: ${totalesIsp.totalFacturasVencidasActivos || 0}\n\nInactivos: ${totalesIsp.clientesInactivos || 0}\nFact. Vencidas: ${totalesIsp.totalFacturasVencidasInactivos || 0}`;
-    } else if (btn.id === '1') {
-      btn.title = `Facturaciones\n\nFacturas Vencidas: ${totalesIsp.totalFacturasVencidas || 0}`;
+    if (!esOperador) {
+      if (btn.id === '2') {
+        // Restaurar el título con el formato de texto anterior (mismas letras)
+        btn.title = `Clientes\n\nTotal: ${totalesIsp.totalClientes || 0}\n\nActivos: ${totalesIsp.clientesActivos || 0}\nFact. Vencidas: ${totalesIsp.totalFacturasVencidasActivos || 0}\n\nInactivos: ${totalesIsp.clientesInactivos || 0}\nFact. Vencidas: ${totalesIsp.totalFacturasVencidasInactivos || 0}`;
+      } else if (btn.id === '1') {
+        btn.title = `Facturaciones\n\nFacturas Vencidas: ${totalesIsp.totalFacturasVencidas || 0}`;
+      }
     }
   });
   
@@ -1322,7 +1327,7 @@ const botonesData = [
           </Text>
         )}
 
-        {item.id === '2' && (
+        {!esOperador && item.id === '2' && (
           <View style={styles.metricsContainer}>
             {/* Total */}
             <Text style={styles.metricSubtle}>Total: {totalesIsp.totalClientes || 0}</Text>
@@ -1382,7 +1387,7 @@ const botonesData = [
           </View>
         )}
 
-        {item.id === '7' && (
+        {!esOperador && item.id === '7' && (
           <View style={styles.metricsContainer}>
             {/* Total */}
             <Text style={styles.metricSubtle}>Total: {totalesCon.totalConexiones || 0}</Text>
@@ -1436,7 +1441,7 @@ const botonesData = [
           </View>
         )}
 
-        {item.id === '1' && (
+        {!esOperador && item.id === '1' && (
           <View style={styles.metricsContainer}>
             {/* Total ciclos */}
             <Text style={styles.metricSubtle}>Total: {totalesCic.totalCiclos || 0}</Text>
@@ -1490,7 +1495,7 @@ const botonesData = [
           </View>
         )}
 
-        {item.id === '16' && (
+        {!esOperador && item.id === '16' && (
           <View style={styles.metricsContainer}>
             {/* Total enviados */}
             <Text style={styles.metricSubtle}>Total enviados: {totalesSms.totalSmsEnviados || 0}</Text>
@@ -1563,7 +1568,7 @@ const botonesData = [
           </View>
         )}
 
-        {item.id === '17' && (
+        {!esOperador && item.id === '17' && (
           <View style={styles.metricsContainer}>
             {/* Total instalaciones */}
             <Text style={styles.metricSubtle}>Total: {totalesInst.totalInstalaciones || 0}</Text>
@@ -1615,7 +1620,7 @@ const botonesData = [
           </View>
         )}
 
-        {item.id === '6' && (
+        {!esOperador && item.id === '6' && (
           <View style={styles.metricsContainer}>
             {/* Total usuarios */}
             <Text style={styles.metricSubtle}>Total: {totalesUsr.totalUsuarios || 0}</Text>
@@ -1636,7 +1641,7 @@ const botonesData = [
           </View>
         )}
 
-        {item.id === '10' && (
+        {!esOperador && item.id === '10' && (
           <View style={styles.metricsContainer}>
             {/* Total configuraciones */}
             <Text style={styles.metricSubtle}>Total: {totalesCfg.totalConfiguraciones || 0}</Text>
@@ -1707,7 +1712,7 @@ const botonesData = [
           </View>
         )}
 
-        {item.id === '11' && (
+        {!esOperador && item.id === '11' && (
           <View style={styles.metricsContainer}>
             {/* Total órdenes */}
             <Text style={styles.metricSubtle}>Total: {totalesOrd.totalOrdenes || 0}</Text>

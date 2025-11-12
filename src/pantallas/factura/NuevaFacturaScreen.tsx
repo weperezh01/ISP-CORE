@@ -181,74 +181,112 @@ const NuevaFacturaScreen = ({ route, navigation }) => {
 
 
 
+    const cicloBaseSeleccionado = ciclos.find(c => c.id_ciclo_base === selectedCicloBase);
+    const cicloFacturaSeleccionado = cicloFacturacion.find(c => c.id_ciclo === selectedCicloFacturacion);
+    const summaryItems = [
+        { label: 'Ciclo base', value: cicloBaseSeleccionado ? `${cicloBaseSeleccionado.detalle} · día ${cicloBaseSeleccionado.dia_mes}` : 'Sin seleccionar' },
+        { label: 'Facturación', value: cicloFacturaSeleccionado ? `${formatDate(cicloFacturaSeleccionado.inicio)} → ${formatDate(cicloFacturaSeleccionado.final)}` : 'Sin seleccionar' }
+    ];
+    const isDisabled = !selectedCicloBase || !selectedCicloFacturacion;
+
     return (
         <View style={styles.container}>
-            <ScrollView>
-                <Text style={styles.title}>Nueva Factura</Text>
-                <Text style={styles.label}>Cliente</Text>
-                <Text style={styles.value}>{clientInfo.nombres} {clientInfo.apellidos}</Text>
-
-                {/* Ciclo Base */}
-                <Text style={styles.label}>Ciclo Base</Text>
-                <View style={styles.pickerContainer}>
-                    <Picker
-                        selectedValue={selectedCicloBase}
-                        onValueChange={(itemValue) => {
-                            setSelectedCicloBase(itemValue);
-                            setCicloFacturacion([]);
-                            setSelectedCicloFacturacion('');
-                            if (itemValue) fetchCicloFacturacion(itemValue);
-                        }}
-                        style={styles.picker}
-                    >
-                        <Picker.Item label="Seleccione un ciclo base" value="" />
-                        {ciclos.map((ciclo) => (
-                            <Picker.Item
-                                key={ciclo.id_ciclo_base}
-                                label={`${ciclo.detalle} (Día: ${ciclo.dia_mes})`}
-                                value={ciclo.id_ciclo_base}
-                            />
-                        ))}
-                    </Picker>
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+                <View style={styles.sectionCard}>
+                    <Text style={styles.eyebrow}>Cliente</Text>
+                    <Text style={styles.headline}>{clientInfo.nombres} {clientInfo.apellidos}</Text>
+                    <Text style={styles.subhead}>ID {clientInfo.id_cliente}</Text>
                 </View>
 
-                {/* Ciclo Facturación */}
-                <Text style={styles.label}>Ciclo de Facturación</Text>
-                <View style={styles.pickerContainer}>
-                    {isLoading ? (
-                        <ActivityIndicator size="large" color="#007bff" />
-                    ) : (
+                <View style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Ciclo base</Text>
+                        {cicloBaseSeleccionado && (
+                            <View style={styles.badge}><Text style={styles.badgeText}>día {cicloBaseSeleccionado.dia_mes}</Text></View>
+                        )}
+                    </View>
+                    <View style={styles.pickerContainer}>
                         <Picker
-                            selectedValue={selectedCicloFacturacion}
-                            onValueChange={setSelectedCicloFacturacion}
+                            selectedValue={selectedCicloBase}
+                            onValueChange={(itemValue) => {
+                                setSelectedCicloBase(itemValue);
+                                setCicloFacturacion([]);
+                                setSelectedCicloFacturacion('');
+                                if (itemValue) fetchCicloFacturacion(itemValue);
+                            }}
                             style={styles.picker}
-                            enabled={cicloFacturacion.length > 0}
                         >
-                            <Picker.Item label="Seleccione un ciclo de facturación" value="" />
-                            {cicloFacturacion.map((ciclo) => (
+                            <Picker.Item label="Seleccione un ciclo base" value="" />
+                            {ciclos.map((ciclo) => (
                                 <Picker.Item
-                                    key={ciclo.id_ciclo}
-                                    label={`Inicio: ${formatDate(ciclo.inicio)}, Final: ${formatDate(ciclo.final)}`}
-                                    value={ciclo.id_ciclo}
+                                    key={ciclo.id_ciclo_base}
+                                    label={`${ciclo.detalle} · día ${ciclo.dia_mes}`}
+                                    value={ciclo.id_ciclo_base}
                                 />
                             ))}
                         </Picker>
-                    )}
+                    </View>
+                    <Text style={styles.helperText}>Este ciclo agrupa a los clientes por su día habitual de cobro.</Text>
                 </View>
 
-                {/* Campo de Nota */}
-                <Text style={styles.label}>Nota</Text>
-                <TextInput
-                    style={[styles.input, { minHeight: 100, textAlignVertical: 'top' }]}
-                    placeholder="Escriba una nota (opcional)"
-                    placeholderTextColor={isDarkMode ? '#ccc' : '#333'}
-                    multiline
-                    value={descripcion}
-                    onChangeText={setDescripcion}
-                />
+                <View style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Ciclo de facturación</Text>
+                    </View>
+                    <View style={styles.pickerContainer}>
+                        {isLoading ? (
+                            <ActivityIndicator size="large" color={isDarkMode ? '#93C5FD' : '#2563EB'} />
+                        ) : (
+                            <Picker
+                                selectedValue={selectedCicloFacturacion}
+                                onValueChange={setSelectedCicloFacturacion}
+                                style={styles.picker}
+                                enabled={cicloFacturacion.length > 0}
+                            >
+                                <Picker.Item label="Seleccione un ciclo de facturación" value="" />
+                                {cicloFacturacion.map((ciclo) => (
+                                    <Picker.Item
+                                        key={ciclo.id_ciclo}
+                                        label={`Inicio ${formatDate(ciclo.inicio)} / Fin ${formatDate(ciclo.final)}`}
+                                        value={ciclo.id_ciclo}
+                                    />
+                                ))}
+                            </Picker>
+                        )}
+                    </View>
+                    <Text style={styles.helperText}>Define la ventana que se cobrará al cliente. Debe pertenecer al ciclo base anterior.</Text>
+                </View>
 
-                <TouchableOpacity style={styles.button} onPress={handleGuardarFactura}>
-                    <Text style={styles.buttonText}>Guardar Factura</Text>
+                <View style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Nota</Text>
+                    </View>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Describe el motivo de la factura, trabajos realizados o instrucciones especiales"
+                        placeholderTextColor={isDarkMode ? '#9CA3AF' : '#94A3B8'}
+                        multiline
+                        value={descripcion}
+                        onChangeText={setDescripcion}
+                    />
+                    <Text style={styles.helperText}>La nota es opcional y se mostrará en el historial del cliente.</Text>
+                </View>
+
+                <View style={styles.sectionCard}>
+                    {summaryItems.map(item => (
+                        <View key={item.label} style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>{item.label}</Text>
+                            <Text style={styles.summaryValue}>{item.value}</Text>
+                        </View>
+                    ))}
+                </View>
+
+                <TouchableOpacity
+                    style={[styles.primaryButton, isDisabled && styles.primaryButtonDisabled]}
+                    onPress={handleGuardarFactura}
+                    disabled={isDisabled}
+                >
+                    <Text style={styles.primaryButtonText}>Guardar factura</Text>
                 </TouchableOpacity>
             </ScrollView>
         </View>

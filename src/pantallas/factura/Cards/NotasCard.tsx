@@ -17,19 +17,19 @@ const NotasCard = ({ facturaData, styles, handlePressNotaPendiente, formatDate }
 
     const getStatusColor = (estado) => {
         switch (estado) {
-            case 'revisado':
-                return '#10B981'; // Green
+            case 'aprobada':
+                return '#10B981'; // Green - Aprobada
             case 'en_revision':
-                return '#F59E0B'; // Orange
+                return '#F59E0B'; // Orange - En Revisión
             default:
-                return '#6B7280'; // Gray
+                return '#6B7280'; // Gray - Pendiente (null o cualquier otro)
         }
     };
 
     const getStatusText = (estado) => {
         switch (estado) {
-            case 'revisado':
-                return '✅ Revisado';
+            case 'aprobada':
+                return '✅ Aprobada';
             case 'en_revision':
                 return '⏳ En Revisión';
             default:
@@ -59,23 +59,27 @@ const NotasCard = ({ facturaData, styles, handlePressNotaPendiente, formatDate }
                         data={facturaData.notas}
                         keyExtractor={(item) => item.id_nota.toString()}
                         showsVerticalScrollIndicator={false}
-                        renderItem={({ item, index }) => (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    if (item.estado_revision === 'en_revision') {
-                                        handlePressNotaPendiente(item);
-                                    }
-                                }}
-                                disabled={item.estado_revision !== 'en_revision'}
-                                activeOpacity={item.estado_revision === 'en_revision' ? 0.7 : 1}
-                            >
-                                <View style={[
-                                    styles.notaContainer,
-                                    { 
-                                        marginBottom: index === facturaData.notas.length - 1 ? 0 : 16,
-                                        opacity: item.estado_revision === 'en_revision' ? 1 : 0.8
-                                    }
-                                ]}>
+                        renderItem={({ item, index }) => {
+                            // Solo se puede editar si está pendiente (null) o en revisión
+                            const esEditable = item.estado_revision === null || item.estado_revision === 'en_revision';
+
+                            return (
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        if (esEditable) {
+                                            handlePressNotaPendiente(item);
+                                        }
+                                    }}
+                                    disabled={!esEditable}
+                                    activeOpacity={esEditable ? 0.7 : 1}
+                                >
+                                    <View style={[
+                                        styles.notaContainer,
+                                        {
+                                            marginBottom: index === facturaData.notas.length - 1 ? 0 : 16,
+                                            opacity: esEditable ? 1 : 0.8
+                                        }
+                                    ]}>
                                     {/* Note header with author and status */}
                                     <View style={{ 
                                         flexDirection: 'row', 
@@ -107,13 +111,13 @@ const NotasCard = ({ facturaData, styles, handlePressNotaPendiente, formatDate }
                                         📅 {formatNoteDate(item.fecha, item.hora)}
                                     </Text>
 
-                                    {/* Interaction hint for pending notes */}
-                                    {item.estado_revision === 'en_revision' && (
+                                    {/* Interaction hint for editable notes */}
+                                    {esEditable && (
                                         <Text style={[
-                                            styles.notaDate, 
-                                            { 
-                                                fontStyle: 'italic', 
-                                                color: '#F59E0B', 
+                                            styles.notaDate,
+                                            {
+                                                fontStyle: 'italic',
+                                                color: item.estado_revision === 'en_revision' ? '#F59E0B' : '#6B7280',
                                                 marginTop: 8,
                                                 fontSize: 12
                                             }
@@ -123,7 +127,8 @@ const NotasCard = ({ facturaData, styles, handlePressNotaPendiente, formatDate }
                                     )}
                                 </View>
                             </TouchableOpacity>
-                        )}
+                        );
+                        }}
                     />
                 )}
             </View>
