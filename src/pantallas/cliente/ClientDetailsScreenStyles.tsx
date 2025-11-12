@@ -208,6 +208,12 @@ export const getStyles = (isDarkMode) =>
       borderBottomColor: isDarkMode ? colors.gray[700] : colors.gray[100],
     },
 
+    detailRowPressable: {
+      borderRadius: 12,
+      paddingHorizontal: 4,
+      backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.05)',
+    },
+
     detailIcon: {
       width: 32,
       height: 32,
@@ -235,10 +241,194 @@ export const getStyles = (isDarkMode) =>
       color: isDarkMode ? colors.gray[100] : colors.gray[900],
     },
 
+    detailSubList: {
+      marginTop: 6,
+    },
+
+    detailSubItem: {
+      paddingLeft: 12,
+      borderLeftWidth: 2,
+      borderLeftColor: isDarkMode ? colors.gray[600] : colors.gray[200],
+      marginBottom: 6,
+    },
+
+    detailSubLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: isDarkMode ? colors.gray[400] : colors.gray[600],
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+
+    detailSubValue: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: isDarkMode ? colors.gray[100] : colors.gray[800],
+      marginTop: 2,
+    },
+
+    detailHint: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.primary[600],
+    },
+
+    mapModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+    },
+
+    mapModalCard: {
+      width: '100%',
+      backgroundColor: isDarkMode ? colors.gray[800] : '#FFFFFF',
+      borderRadius: 20,
+      padding: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.3,
+      shadowRadius: 16,
+      elevation: 10,
+    },
+
+    mapModalTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: isDarkMode ? colors.gray[100] : colors.gray[900],
+      marginBottom: 6,
+    },
+
+    mapModalSubtitle: {
+      fontSize: 14,
+      color: isDarkMode ? colors.gray[300] : colors.gray[600],
+      marginBottom: 16,
+    },
+
+    mapModalButtons: {
+      gap: 12,
+      marginBottom: 16,
+    },
+
+    mapModalButton: {
+      paddingVertical: 12,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+
+    mapModalPrimary: {
+      backgroundColor: colors.primary[600],
+    },
+
+    mapModalSecondary: {
+      backgroundColor: isDarkMode ? colors.gray[700] : colors.gray[100],
+    },
+
+    mapModalButtonText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+
+    mapModalSecondaryText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: isDarkMode ? colors.gray[100] : colors.gray[800],
+    },
+
+    mapModalCancel: {
+      textAlign: 'center',
+      color: isDarkMode ? colors.gray[300] : colors.gray[600],
+      fontWeight: '600',
+    },
+
     detailValueLink: {
       fontSize: 16,
       fontWeight: '600',
       color: colors.primary[600],
+    },
+    phoneButton: {
+      marginTop: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
+      borderWidth: 1,
+      borderColor: isDarkMode ? '#2563EB' : '#93C5FD',
+    },
+    phoneButtonText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: isDarkMode ? '#DBEAFE' : '#1D4ED8',
+    },
+    phoneButtonHint: {
+      marginTop: 2,
+      fontSize: 11,
+      fontWeight: '600',
+      color: isDarkMode ? '#93C5FD' : '#1D4ED8',
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+    },
+    phoneModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+    },
+    phoneModalCard: {
+      width: '100%',
+      backgroundColor: isDarkMode ? colors.gray[800] : '#FFFFFF',
+      borderRadius: 20,
+      padding: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.3,
+      shadowRadius: 16,
+      elevation: 10,
+    },
+    phoneModalTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: isDarkMode ? colors.gray[100] : colors.gray[900],
+      marginBottom: 6,
+    },
+    phoneModalNumber: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: isDarkMode ? '#93C5FD' : '#1D4ED8',
+      marginBottom: 16,
+    },
+    phoneModalButtons: {
+      gap: 12,
+      marginBottom: 16,
+    },
+    phoneModalButton: {
+      paddingVertical: 12,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    phoneModalPrimary: {
+      backgroundColor: '#2563EB',
+    },
+    phoneModalSecondary: {
+      backgroundColor: isDarkMode ? colors.gray[700] : colors.gray[100],
+    },
+    phoneModalButtonText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    phoneModalSecondaryText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: isDarkMode ? colors.gray[100] : colors.gray[800],
+    },
+    phoneModalCancel: {
+      textAlign: 'center',
+      color: isDarkMode ? colors.gray[300] : colors.gray[600],
+      fontWeight: '600',
     },
 
     detailValueDate: {

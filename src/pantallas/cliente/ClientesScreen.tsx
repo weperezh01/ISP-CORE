@@ -10,6 +10,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import HorizontalMenu from '../../componentes/HorizontalMenu';
 import MenuModal from '../../componentes/MenuModal';
+import { buildAddressInfo } from '../../utils/addressFormatter';
 import { getStyles, getFabStyles } from './ClientesScreenStyle';
 
 // Colors palette - needed for the expand button
@@ -633,6 +634,12 @@ const ClientListScreen = ({ navigation }) => {
             toggleExpansion();
         };
 
+        const addressInfo = useMemo(() => buildAddressInfo(item.direccion, item.referencia), [item.direccion, item.referencia]);
+        const direccionPrincipal = addressInfo.principal || addressInfo.original;
+        const referenciaDireccion = addressInfo.referencia;
+        const gpsDireccion = addressInfo.gps;
+        const mostrarDireccion = direccionPrincipal !== '' || Boolean(referenciaDireccion) || Boolean(gpsDireccion);
+
         return (
             <TouchableOpacity 
                 style={styles.clientCard}
@@ -715,10 +722,28 @@ const ClientListScreen = ({ navigation }) => {
                                     <Text style={styles.detailEmail}>{item.email}</Text>
                                 </View>
                             )}
-                            {item.direccion && (
-                                <View style={styles.detailRow}>
+                            {mostrarDireccion && (
+                                <View style={[styles.detailRow, styles.detailRowFull]}>
                                     <Text style={styles.detailLabel}>🏠 Dirección:</Text>
-                                    <Text style={styles.detailValue} numberOfLines={2}>{item.direccion}</Text>
+                                    {direccionPrincipal !== '' && (
+                                        <Text style={[styles.detailValue, styles.detailValueFull]}>{direccionPrincipal}</Text>
+                                    )}
+                                    {(referenciaDireccion || gpsDireccion) && (
+                                        <View style={styles.detailSubList}>
+                                            {referenciaDireccion && (
+                                                <View style={styles.detailSubItem}>
+                                                    <Text style={styles.detailSubLabel}>Referencia</Text>
+                                                    <Text style={styles.detailSubValue}>{referenciaDireccion}</Text>
+                                                </View>
+                                            )}
+                                            {gpsDireccion && (
+                                                <View style={styles.detailSubItem}>
+                                                    <Text style={styles.detailSubLabel}>GPS</Text>
+                                                    <Text style={styles.detailSubValue}>{gpsDireccion}</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    )}
                                 </View>
                             )}
                             {item.fecha_creacion_cliente && (
@@ -954,9 +979,9 @@ const ClientListScreen = ({ navigation }) => {
                 <View style={styles.headerContent}>
                     <View style={styles.headerLeft}>
                         <Text style={styles.headerTitle}>Clientes</Text>
-                        <Text style={styles.headerSubtitle}>
+                        {/* <Text style={styles.headerSubtitle}>
                             Mostrando {filteredClients.length} de {clientCount || clientList.length} clientes
-                        </Text>
+                        </Text> */}
                     </View>
                     <View style={styles.headerActions}>
                         <TouchableOpacity style={styles.filterButton} onPress={toggleModal}>
@@ -1044,11 +1069,12 @@ const ClientListScreen = ({ navigation }) => {
                                     Cargar más clientes ({Math.max(clientCount - clientList.length, 0)} restantes)
                                 </Text>
                             </TouchableOpacity>
-                        ) : filteredClients.length > 0 ? (
-                            <Text style={styles.endOfListText}>
-                                Mostrando todos los {clientCount || filteredClients.length} clientes
-                            </Text>
                         ) : null
+                        // : filteredClients.length > 0 ? (
+                        //     <Text style={styles.endOfListText}>
+                        //         Mostrando todos los {clientCount || filteredClients.length} clientes
+                        //     </Text>
+                        // ) : null
                     )}
                     contentContainerStyle={{ 
                         paddingHorizontal: 16, 

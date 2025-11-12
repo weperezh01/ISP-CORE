@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, FlatList, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../ThemeContext';
@@ -7,7 +7,7 @@ import { getStyles } from '../estilos/styles';
 import axios from 'axios';
 
 const AsignacionServicioClienteScreen = ({ navigation, route }) => {
-    const { serviceId, clientId, userId, ispId } = route.params;
+    const { serviceId, clientId, userId, ispId, clienteDireccion, clienteReferencia } = route.params || {};
     const { isDarkMode } = useTheme();
     const styles = getStyles(isDarkMode);
     const [nombreUsuario, setNombreUsuario] = useState('');
@@ -19,6 +19,8 @@ const AsignacionServicioClienteScreen = ({ navigation, route }) => {
     const [showCicloFacturacionList, setShowCicloFacturacionList] = useState(false);
     const [direccion, setDireccion] = useState('');
     const [referencia, setReferencia] = useState('');
+    const clienteDireccionBase = clienteDireccion || '';
+    const clienteReferenciaBase = clienteReferencia || '';
     const [precio, setPrecio] = useState('');
     const isEditMode = route.params?.isEditMode || false;
     const [usuarioId, setUsuarioId] = useState('');
@@ -35,6 +37,8 @@ const AsignacionServicioClienteScreen = ({ navigation, route }) => {
         });
         return formatter.format(amount);
     };
+
+    const tieneDireccionCliente = !!clienteDireccionBase;
 
     useEffect(() => {
         const registrarNavegacion = async () => {
@@ -188,6 +192,15 @@ const AsignacionServicioClienteScreen = ({ navigation, route }) => {
 
     const handleChange = (setter) => (text) => setter(text);
 
+    const handleUsarDireccionCliente = () => {
+        if (clienteDireccionBase) {
+            setDireccion(clienteDireccionBase);
+        }
+        if (clienteReferenciaBase) {
+            setReferencia(prev => (prev && prev.trim() !== '' ? prev : clienteReferenciaBase));
+        }
+    };
+
     const handleAddNew = async () => {
         const newConnectionData = {
             id_isp: ispId,
@@ -244,95 +257,146 @@ const AsignacionServicioClienteScreen = ({ navigation, route }) => {
     };
 
     const renderItem = ({ item, onPress }) => (
-        <TouchableOpacity onPress={onPress} style={styles.item}>
-            <Text style={styles.text}>{item.label}</Text>
+        <TouchableOpacity onPress={onPress} style={styles.dropdownItem}>
+            <Text style={styles.dropdownItemText}>{item.label}</Text>
         </TouchableOpacity>
     );
 
-    const renderContent = () => (
-        <>
-            <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Tipo de Servicio</Text>
-                <TouchableOpacity onPress={() => setShowTipoConexionList(!showTipoConexionList)} style={styles.inputTouchable}>
-                    <Text style={styles.inputText}>
-                        {tipoConexion
-                            ? tiposDeConexion.find(item => item.value === tipoConexion)?.label
-                            : 'Seleccione el servicio'}
-                    </Text>
-                </TouchableOpacity>
-                {showTipoConexionList && (
-                    <FlatList
-                        data={tiposDeConexion}
-                        renderItem={({ item }) => renderItem({ item, onPress: () => handleTipoConexionSelect(item) })}
-                        keyExtractor={(item) => item.value.toString()}
-                        style={styles.flatList}
-                    />
-                )}
-            </View>
+    const renderContent = () => {
+        const servicioSeleccionado = tipoConexion
+            ? tiposDeConexion.find(item => item.value === tipoConexion)
+            : null;
+        const cicloSeleccionadoInfo = cicloSeleccionado
+            ? ciclosDeFacturacion.find(item => item.value === cicloSeleccionado)
+            : null;
+        const submitDisabled = !tipoConexion || !cicloSeleccionado || direccion.trim() === '';
 
-            <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Ciclo de Facturación</Text>
-                <TouchableOpacity onPress={() => setShowCicloFacturacionList(!showCicloFacturacionList)} style={styles.inputTouchable}>
-                    <Text style={styles.inputText}>
-                        {cicloSeleccionado
-                            ? ciclosDeFacturacion.find(item => item.value === cicloSeleccionado)?.label
-                            : 'Seleccione el ciclo de facturación'}
-                    </Text>
-                </TouchableOpacity>
-                {showCicloFacturacionList && (
-                    <FlatList
-                        data={ciclosDeFacturacion}
-                        renderItem={({ item }) => renderItem({ item, onPress: () => handleCicloSeleccionado(item) })}
-                        keyExtractor={(item) => item.value.toString()}
-                        style={styles.flatList}
-                    />
-                )}
-            </View>
+        return (
+            <View style={styles.formWrapper}>
+                <View style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Servicio</Text>
+                        {servicioSeleccionado && (
+                            <View style={styles.sectionBadge}>
+                                <Text style={styles.sectionBadgeText}>ID {servicioSeleccionado.value}</Text>
+                            </View>
+                        )}
+                    </View>
+                    <TouchableOpacity
+                        onPress={() => setShowTipoConexionList(!showTipoConexionList)}
+                        style={styles.selectorButton}
+                    >
+                        <View style={styles.selectorContent}>
+                            <Text style={styles.selectorLabel}>Tipo de servicio</Text>
+                            <Text style={styles.selectorValue}>
+                                {servicioSeleccionado ? servicioSeleccionado.label : 'Selecciona el plan a asignar'}
+                            </Text>
+                        </View>
+                        <Text style={styles.selectorCaret}>{showTipoConexionList ? '▲' : '▼'}</Text>
+                    </TouchableOpacity>
+                    {showTipoConexionList && (
+                        <View style={styles.dropdownList}>
+                            <FlatList
+                                data={tiposDeConexion}
+                                renderItem={({ item }) => renderItem({ item, onPress: () => handleTipoConexionSelect(item) })}
+                                keyExtractor={(item) => item.value.toString()}
+                                nestedScrollEnabled
+                            />
+                        </View>
+                    )}
+                    <Text style={styles.sectionHelper}>Incluye la tarifa mensual y características del servicio seleccionado.</Text>
+                </View>
 
-            <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Dirección</Text>
-                <TextInput
-                    style={styles.notebox}
-                    onChangeText={handleChange(setDireccion)}
-                    value={direccion}
-                    placeholder="Ingrese dirección"
-                    multiline
-                    numberOfLines={4}
-                    textAlignVertical="top"
-                />
-            </View>
+                <View style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Ciclo de facturación</Text>
+                    </View>
+                    <TouchableOpacity
+                        onPress={() => setShowCicloFacturacionList(!showCicloFacturacionList)}
+                        style={styles.selectorButton}
+                    >
+                        <View style={styles.selectorContent}>
+                            <Text style={styles.selectorLabel}>Ciclo activo</Text>
+                            <Text style={styles.selectorValue}>
+                                {cicloSeleccionadoInfo ? cicloSeleccionadoInfo.label : 'Selecciona el ciclo al que pertenece'}
+                            </Text>
+                        </View>
+                        <Text style={styles.selectorCaret}>{showCicloFacturacionList ? '▲' : '▼'}</Text>
+                    </TouchableOpacity>
+                    {showCicloFacturacionList && (
+                        <View style={styles.dropdownList}>
+                            <FlatList
+                                data={ciclosDeFacturacion}
+                                renderItem={({ item }) => renderItem({ item, onPress: () => handleCicloSeleccionado(item) })}
+                                keyExtractor={(item) => item.value.toString()}
+                                nestedScrollEnabled
+                            />
+                        </View>
+                    )}
+                    <Text style={styles.sectionHelper}>El ciclo define cuándo se facturará este nuevo servicio.</Text>
+                </View>
 
-            <View style={styles.fieldContainer}>
-                <Text style={styles.label}>Referencia</Text>
-                <TextInput
-                    style={styles.notebox}
-                    onChangeText={handleChange(setReferencia)}
-                    value={referencia}
-                    placeholder="Ingrese referencia"
-                    multiline
-                    numberOfLines={4}
-                    textAlignVertical="top"
-                />
-            </View>
-
-            {!isEditMode && (
-                <View style={styles.fieldContainer}>
-                    <Text style={styles.label}>Precio de la instalación</Text>
+                <View style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Ubicación del servicio</Text>
+                    </View>
+                    {tieneDireccionCliente && (
+                        <TouchableOpacity
+                            style={styles.copyAddressButton}
+                            onPress={handleUsarDireccionCliente}
+                        >
+                            <Text style={styles.copyAddressButtonText}>Usar la dirección registrada del cliente</Text>
+                        </TouchableOpacity>
+                    )}
                     <TextInput
-                        style={styles.input}
-                        onChangeText={handleChange(setPrecio)}
-                        value={precio}
-                        placeholder="Ingrese precio"
-                        keyboardType="numeric"
+                        style={[styles.notebox, styles.inputLarge]}
+                        onChangeText={handleChange(setDireccion)}
+                        value={direccion}
+                        placeholder="Ingresa la dirección del servicio"
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                    />
+                    <Text style={styles.sectionHelper}>Puedes ajustar detalles como apartamento, referencias o puntos de instalación.</Text>
+                    <TextInput
+                        style={[styles.notebox, styles.inputLarge]}
+                        onChangeText={handleChange(setReferencia)}
+                        value={referencia}
+                        placeholder="Referencia adicional (opcional)"
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
                     />
                 </View>
-            )}
 
-            <TouchableOpacity style={styles.button} onPress={isEditMode ? handleUpdate : handleAddNew}>
-                <Text style={styles.buttonText}>{isEditMode ? 'Actualizar Conexión' : 'Guardar Conexión'}</Text>
-            </TouchableOpacity>
-        </>
-    );
+                {!isEditMode && (
+                    <View style={styles.sectionCard}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>Precio de instalación</Text>
+                        </View>
+                        <TextInput
+                            style={styles.input}
+                            onChangeText={handleChange(setPrecio)}
+                            value={precio}
+                            placeholder="Ingresa el monto acordado"
+                            keyboardType="numeric"
+                        />
+                        <Text style={styles.sectionHelper}>Si no se cobrará instalación, deja el campo vacío.</Text>
+                    </View>
+                )}
+
+                <TouchableOpacity
+                    style={[styles.primaryButton, submitDisabled && styles.primaryButtonDisabled]}
+                    onPress={isEditMode ? handleUpdate : handleAddNew}
+                    disabled={submitDisabled}
+                >
+                    <Text style={styles.primaryButtonText}>
+                        {isEditMode ? 'Actualizar servicio' : 'Guardar nuevo servicio'}
+                    </Text>
+                </TouchableOpacity>
+            </View>
+        );
+    };
 
     return (
         <>
@@ -361,7 +425,7 @@ const AsignacionServicioClienteScreen = ({ navigation, route }) => {
                         data={[{ key: 'content' }]}
                         renderItem={renderContent}
                         keyExtractor={(item) => item.key}
-                        contentContainerStyle={styles.contentContainer}
+                        contentContainerStyle={styles.formContentContainer}
                     />
                 </KeyboardAvoidingView>
             )}

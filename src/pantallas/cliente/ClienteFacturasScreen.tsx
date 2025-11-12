@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Alert, TextInput, Linking, Modal, ScrollView, Animated, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, Alert, TextInput, Linking, Modal, ScrollView, Animated, Dimensions, Share } from 'react-native';
 import { useTheme } from '../../../ThemeContext';
 import ThemeSwitch from '../../componentes/themeSwitch';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,6 +8,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { getStyles } from './ClienteFacturasScreenStylesFallback';
 import HorizontalMenu from '../../componentes/HorizontalMenu';
 import MenuModal from '../../componentes/MenuModal';
+import { buildAddressInfo } from '../../utils/addressFormatter';
 
 const ClienteFacturasScreen = ({ route }) => {
     const { clientId, usuarioId } = route.params;
@@ -43,6 +44,12 @@ const ClienteFacturasScreen = ({ route }) => {
         { id: 3, label: 'Pendiente de aprobación', checked: false }
     ]);
     const [ispId, setIspId] = useState(null);  // Estado para almacenar el id_isp
+    const addressInfo = useMemo(() => buildAddressInfo(clientInfo?.direccion, clientInfo?.referencia), [clientInfo?.direccion, clientInfo?.referencia]);
+    const direccionPrincipal = addressInfo.principal || addressInfo.original;
+    const referenciaDireccion = addressInfo.referencia;
+    const gpsDireccion = addressInfo.gps;
+    const mostrarDireccion = direccionPrincipal !== '' || Boolean(referenciaDireccion) || Boolean(gpsDireccion);
+    const [addressModalVisible, setAddressModalVisible] = useState(false);
 
     // Estados para animación de header y menu
     const scrollY = useRef(new Animated.Value(0)).current;
@@ -353,10 +360,25 @@ const ClienteFacturasScreen = ({ route }) => {
     };
 
     const handleSendWhatsApp = (phoneNumber) => {
-        const url = `whatsapp://send?phone=${phoneNumber}`;
-        Linking.openURL(url)
+        const phone = phoneNumber.replace(/\D/g, '');
+        Linking.openURL(`https://wa.me/${phone}`)
             .then(() => registrarWhatsApp(clientInfo.id_cliente, idUsuario))
             .catch(err => console.error('Error opening WhatsApp', err));
+    };
+
+    const handlePhoneCall = () => {
+        makeCall(selectedPhone);
+        closePhoneModal();
+    };
+
+    const handlePhoneSms = () => {
+        handleSendSMS(selectedPhone);
+        closePhoneModal();
+    };
+
+    const handlePhoneWhatsApp = () => {
+        handleSendWhatsApp(selectedPhone);
+        closePhoneModal();
     };
 
     const registrarSMS = async (id_cliente, idUsuario) => {
@@ -425,12 +447,152 @@ const ClienteFacturasScreen = ({ route }) => {
         }
     };
 
+    const [phoneModalVisible, setPhoneModalVisible] = useState(false);
+    const [selectedPhone, setSelectedPhone] = useState('');
+
+    const openPhoneModal = (phoneNumber) => {
+        if (!phoneNumber) {
+            Alert.alert('Número de teléfono no disponible');
+            return;
+        }
+        setSelectedPhone(phoneNumber);
+        setPhoneModalVisible(true);
+    };
+
+    const closePhoneModal = () => {
+        setPhoneModalVisible(false);
+    };
+
     const makeCall = (phoneNumber) => {
         const url = `tel:${phoneNumber}`;
         Linking.openURL(url)
             .then(() => registrarLlamada(clientInfo.id_cliente, idUsuario))
             .catch(err => console.error('Error making a call', err));
     };
+
+    const handleDireccionPress = () => {
+        if (!direccionPrincipal && !addressInfo.coords) {
+            return;
+        }
+        setAddressModalVisible(true);
+    };
+
+    const handleAbrirMapa = () => {
+        if (!addressInfo.coords) {
+            setAddressModalVisible(false);
+            return;
+        }
+        const query = `${addressInfo.coords.lat},${addressInfo.coords.lng}`;
+        const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+        Linking.openURL(url)
+            .catch(() => Alert.alert('Error', 'No se pudo abrir Google Maps.'))
+            .finally(() => setAddressModalVisible(false));
+    };
+
+    const handleCompartirUbicacion = async () => {
+        const query = addressInfo.coords ? `${addressInfo.coords.lat},${addressInfo.coords.lng}` : direccionPrincipal;
+        if (!query) {
+            return;
+        }
+        const mapsUrl = addressInfo.coords
+            ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${addressInfo.coords.lat},${addressInfo.coords.lng}`)}`
+            : direccionPrincipal;
+        const message = [
+            `Ubicación del cliente: ${direccionPrincipal || 'Sin dirección'}`,
+            referenciaDireccion ? `Referencia: ${referenciaDireccion}` : null,
+            addressInfo.coords ? `Coordenadas: ${addressInfo.coords.lat}, ${addressInfo.coords.lng}` : null,
+            mapsUrl
+        ].filter(Boolean).join('\n');
+
+        try {
+            await Share.share({ message });
+        } catch (error) {
+            // noop
+        } finally {
+            setAddressModalVisible(false);
+        }
+    };
+
+    const renderDireccionModal = () => (
+        <Modal
+            transparent
+            visible={addressModalVisible}
+            animationType="fade"
+            onRequestClose={() => setAddressModalVisible(false)}
+        >
+            <View style={styles.addressModalOverlay}>
+                <View style={styles.addressModalCard}>
+                    <Text style={styles.addressModalTitle}>Ubicación del cliente</Text>
+                    {direccionPrincipal ? (
+                        <Text style={styles.addressModalSubtitle}>{direccionPrincipal}</Text>
+                    ) : null}
+                    {addressInfo.coords && (
+                        <Text style={styles.addressModalCoords}>
+                            {addressInfo.coords.lat}, {addressInfo.coords.lng}
+                        </Text>
+                    )}
+                    <View style={styles.addressModalButtons}>
+                        {addressInfo.coords && (
+                            <TouchableOpacity
+                                style={[styles.addressModalButton, styles.addressModalPrimary]}
+                                onPress={handleAbrirMapa}
+                            >
+                                <Text style={styles.addressModalButtonText}>Abrir en Google Maps</Text>
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                            style={[styles.addressModalButton, styles.addressModalSecondary]}
+                            onPress={handleCompartirUbicacion}
+                        >
+                            <Text style={styles.addressModalSecondaryText}>Compartir ubicación</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity onPress={() => setAddressModalVisible(false)}>
+                        <Text style={styles.addressModalCancel}>Cancelar</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+
+    const renderPhoneModal = () => (
+        <Modal
+            transparent
+            visible={phoneModalVisible}
+            animationType="fade"
+            onRequestClose={closePhoneModal}
+        >
+            <View style={styles.phoneModalOverlay}>
+                <View style={styles.phoneModalCard}>
+                    <Text style={styles.phoneModalTitle}>Contacto</Text>
+                    <Text style={styles.phoneModalNumber}>{selectedPhone}</Text>
+                    <View style={styles.phoneModalButtons}>
+                        <TouchableOpacity
+                            style={[styles.phoneModalButton, styles.phoneModalPrimary]}
+                            onPress={handlePhoneCall}
+                        >
+                            <Text style={styles.phoneModalButtonText}>Llamar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.phoneModalButton, styles.phoneModalPrimary]}
+                            onPress={handlePhoneSms}
+                        >
+                            <Text style={styles.phoneModalButtonText}>Enviar SMS</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.phoneModalButton, styles.phoneModalSecondary]}
+                            onPress={handlePhoneWhatsApp}
+                        >
+                            <Text style={styles.phoneModalSecondaryText}>WhatsApp</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity onPress={closePhoneModal}>
+                        <Text style={styles.phoneModalCancel}>Cancelar</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
 
     const applyFilter = (filterType) => {
         setFilter(filterType);
@@ -892,6 +1054,9 @@ const ClienteFacturasScreen = ({ route }) => {
 
     return (
         <View style={styles.container}>
+            {renderDireccionModal()}
+            {renderDireccionModal()}
+            {renderPhoneModal()}
             {/* Menú Horizontal Animado - Encima de la cabecera */}
             <Animated.View style={[
                 {
@@ -957,31 +1122,47 @@ const ClienteFacturasScreen = ({ route }) => {
                         </View>
                     </View>
 
-                    <Text style={styles.clientInfoText}>📍 {clientInfo.direccion}</Text>
+                    {mostrarDireccion && (
+                        <TouchableOpacity
+                            style={[styles.clientAddressBlock, styles.clientAddressPressable]}
+                            activeOpacity={0.85}
+                            onPress={handleDireccionPress}
+                        >
+                            <Text style={styles.clientInfoLabel}>📍 Dirección</Text>
+                            {direccionPrincipal !== '' && (
+                                <Text style={styles.clientInfoText}>{direccionPrincipal}</Text>
+                            )}
+                            {(referenciaDireccion || gpsDireccion) && (
+                                <View style={styles.detailSubList}>
+                                    {referenciaDireccion && (
+                                        <View style={styles.detailSubItem}>
+                                            <Text style={styles.detailSubLabel}>Referencia</Text>
+                                            <Text style={styles.detailSubValue}>{referenciaDireccion}</Text>
+                                        </View>
+                                    )}
+                                    {gpsDireccion && (
+                                        <View style={styles.detailSubItem}>
+                                            <Text style={styles.detailSubLabel}>GPS</Text>
+                                            <Text style={styles.detailSubValue}>{gpsDireccion}</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            )}
+                            {addressInfo.coords && (
+                                <Text style={styles.clientAddressHint}>Toca para abrir o compartir</Text>
+                            )}
+                        </TouchableOpacity>
+                    )}
 
-                    <View style={styles.phoneRow}>
-                        <TouchableOpacity 
-                            style={[styles.iconButton, styles.iconCall]} 
-                            onPress={() => makeCall(clientInfo.telefono)}
-                            activeOpacity={0.8}
+                    {clientInfo.telefono && (
+                        <TouchableOpacity
+                            style={styles.phoneButton}
+                            onPress={() => openPhoneModal(clientInfo.telefono)}
                         >
-                            <Text style={styles.icon}>📞</Text>
+                            <Text style={styles.phoneButtonText}>{clientInfo.telefono}</Text>
+                            <Text style={styles.phoneButtonHint}>Toca para llamar o enviar mensaje</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity 
-                            style={[styles.iconButton, styles.iconSMS]} 
-                            onPress={() => handleSendSMS(clientInfo.telefono)}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.icon}>✉️</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                            style={[styles.iconButton, styles.iconWhatsApp]} 
-                            onPress={() => handleSendWhatsApp(clientInfo.telefono)}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.icon}>💬</Text>
-                        </TouchableOpacity>
-                    </View>
+                    )}
 
                     <TouchableOpacity
                         style={styles.toggleButton}
@@ -998,7 +1179,7 @@ const ClienteFacturasScreen = ({ route }) => {
                         onPress={() => setShowClientDetails(true)}
                         activeOpacity={0.8}
                     >
-                        <Text style={styles.buttonText}>Mostrar Cliente</Text>
+                        <Text style={styles.buttonText}>Mostrar información del cliente</Text>
                     </TouchableOpacity>
                 </View>
             )}

@@ -276,6 +276,11 @@ export const getStyles = (isDarkMode) =>
       borderBottomColor: isDarkMode ? colors.gray[700] : colors.gray[100],
     },
 
+    detailRowFull: {
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+    },
+
     detailLabel: {
       flex: 1,
       fontSize: 14,
@@ -288,6 +293,40 @@ export const getStyles = (isDarkMode) =>
       fontWeight: '600',
       color: isDarkMode ? colors.gray[100] : colors.gray[900],
       textAlign: 'right',
+    },
+
+    detailSubList: {
+      marginTop: 6,
+      width: '100%',
+    },
+
+    detailSubItem: {
+      paddingLeft: 12,
+      borderLeftWidth: 2,
+      borderLeftColor: isDarkMode ? colors.gray[700] : colors.gray[200],
+      marginBottom: 6,
+    },
+
+    detailSubLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: isDarkMode ? colors.gray[400] : colors.gray[600],
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+
+    detailSubValue: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: isDarkMode ? colors.gray[100] : colors.gray[800],
+      marginTop: 2,
+      textAlign: 'left',
+    },
+
+    detailValueFull: {
+      width: '100%',
+      textAlign: 'left',
+      marginTop: 4,
     },
 
     detailPhone: {

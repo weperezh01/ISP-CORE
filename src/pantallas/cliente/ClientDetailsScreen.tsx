@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Alert, View, Text, TouchableOpacity, FlatList, ActivityIndicator, ScrollView, Animated, Dimensions } from 'react-native';
+import { Alert, View, Text, TouchableOpacity, FlatList, ActivityIndicator, ScrollView, Animated, Dimensions, Linking, Modal, Share } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../../ThemeContext';
 import fetchUserData from '../funciones/solicitudes_backend/Solicitudes';
@@ -8,6 +8,7 @@ import { getStyles } from './ClientDetailsScreenStyles';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import HorizontalMenu from '../../componentes/HorizontalMenu';
 import MenuModal from '../../componentes/MenuModal';
+import { buildAddressInfo } from '../../utils/addressFormatter';
 
 const ClientDetailsScreen = ({ route, navigation }) => {
     console.log('🔍 ClientDetailsScreen - route.params:', route.params);
@@ -23,6 +24,85 @@ const ClientDetailsScreen = ({ route, navigation }) => {
     const [conexiones, setConexiones] = useState([]);
     const [expandedItems, setExpandedItems] = useState(new Set()); // Track which items are expanded
     const [menuVisible, setMenuVisible] = useState(false);
+    const [mapModalVisible, setMapModalVisible] = useState(false);
+
+    const addressInfo = useMemo(() => buildAddressInfo(clientDetails?.direccion, clientDetails?.referencia), [clientDetails?.direccion, clientDetails?.referencia]);
+    const direccionPrincipal = addressInfo.principal || addressInfo.original;
+    const referenciaSubItem = addressInfo.referencia;
+    const gpsSubItem = addressInfo.gps;
+    const gpsCoords = addressInfo.coords;
+    const mostrarDireccion = direccionPrincipal !== '' || Boolean(referenciaSubItem) || Boolean(gpsSubItem);
+
+    const handleAbrirMapa = () => {
+        if (!gpsCoords) {
+            return;
+        }
+        const query = `${gpsCoords.lat},${gpsCoords.lng}`;
+        const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+        Linking.openURL(url).catch(() => {
+            Alert.alert('No se pudo abrir Maps', 'Intenta nuevamente más tarde.');
+        }).finally(() => setMapModalVisible(false));
+    };
+
+    const handleCompartirUbicacion = async () => {
+        if (!gpsCoords) {
+            return;
+        }
+        const query = `${gpsCoords.lat},${gpsCoords.lng}`;
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+        const message = [`Ubicación del cliente: ${direccionPrincipal || 'Sin dirección'}`, `Coordenadas: ${gpsCoords.lat}, ${gpsCoords.lng}`, mapsUrl]
+            .filter(Boolean)
+            .join('\n');
+        try {
+            await Share.share({ message });
+        } catch (error) {
+            // noop
+        } finally {
+            setMapModalVisible(false);
+        }
+    };
+
+    const handleDireccionPress = () => {
+        if (!gpsCoords) {
+            return;
+        }
+        setMapModalVisible(true);
+    };
+
+    const renderMapaModal = () => (
+        <Modal
+            visible={mapModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setMapModalVisible(false)}
+        >
+            <View style={styles.mapModalOverlay}>
+                <View style={styles.mapModalCard}>
+                    <Text style={styles.mapModalTitle}>Compartir ubicación</Text>
+                    <Text style={styles.mapModalSubtitle}>
+                        ¿Qué deseas hacer con la ubicación GPS?
+                    </Text>
+                    <View style={styles.mapModalButtons}>
+                        <TouchableOpacity
+                            style={[styles.mapModalButton, styles.mapModalPrimary]}
+                            onPress={handleAbrirMapa}
+                        >
+                            <Text style={styles.mapModalButtonText}>Abrir en Google Maps</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.mapModalButton, styles.mapModalSecondary]}
+                            onPress={handleCompartirUbicacion}
+                        >
+                            <Text style={styles.mapModalSecondaryText}>Compartir ubicación</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity onPress={() => setMapModalVisible(false)}>
+                        <Text style={styles.mapModalCancel}>Cancelar</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
 
     // Estados para animación de header y menu
     const scrollY = useRef(new Animated.Value(0)).current;
@@ -304,9 +384,69 @@ const ClientDetailsScreen = ({ route, navigation }) => {
         navigation.navigate('AsignacionServicioClienteScreen', {
             clientId,
             userId: usuarioId,
-            ispId
+            ispId,
+            clienteDireccion: addressInfo.principal || addressInfo.original,
+            clienteReferencia: addressInfo.referencia,
         });
     };
+
+    const [phoneModalVisible, setPhoneModalVisible] = useState(false);
+    const [selectedPhone, setSelectedPhone] = useState('');
+
+    const openPhoneModal = (rawPhone: string) => {
+        if (!rawPhone) {
+            return;
+        }
+        setSelectedPhone(rawPhone.trim());
+        setPhoneModalVisible(true);
+    };
+
+    const closePhoneModal = () => {
+        setPhoneModalVisible(false);
+    };
+
+    const handlePhoneCall = () => {
+        if (!selectedPhone) {
+            return;
+        }
+        Linking.openURL(`tel:${selectedPhone}`);
+        closePhoneModal();
+    };
+
+    const handlePhoneSms = () => {
+        if (!selectedPhone) {
+            return;
+        }
+        Linking.openURL(`sms:${selectedPhone}`);
+        closePhoneModal();
+    };
+
+    const renderPhoneModal = () => (
+        <Modal
+            visible={phoneModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={closePhoneModal}
+        >
+            <View style={styles.phoneModalOverlay}>
+                <View style={styles.phoneModalCard}>
+                    <Text style={styles.phoneModalTitle}>Contacto</Text>
+                    <Text style={styles.phoneModalNumber}>{selectedPhone}</Text>
+                    <View style={styles.phoneModalButtons}>
+                        <TouchableOpacity style={[styles.phoneModalButton, styles.phoneModalPrimary]} onPress={handlePhoneCall}>
+                            <Text style={styles.phoneModalButtonText}>Llamar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.phoneModalButton, styles.phoneModalSecondary]} onPress={handlePhoneSms}>
+                            <Text style={styles.phoneModalSecondaryText}>Enviar SMS</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity onPress={closePhoneModal}>
+                        <Text style={styles.phoneModalCancel}>Cancelar</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
 
     // const handleEditClient = () => {
     //     navigation.navigate('AddClientScreen', { clienteId: clientId });
@@ -324,11 +464,17 @@ const ClientDetailsScreen = ({ route, navigation }) => {
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
     const formattedFechaCreacion = (fecha) => {
+        if (!fecha) {
+            return 'Sin fecha';
+        }
         const fechaObj = new Date(fecha);
+        if (Number.isNaN(fechaObj.getTime())) {
+            return fecha;
+        }
         const dia = fechaObj.getDate().toString().padStart(2, '0');
         const mes = meses[fechaObj.getMonth()];
         const anio = fechaObj.getFullYear();
-        return `${dia}/${mes}/${anio}`;
+        return `${dia} de ${mes} del ${anio}`;
     };
 
     const formatCurrency = (amount) => {
@@ -550,7 +696,13 @@ const ClientDetailsScreen = ({ route, navigation }) => {
                         </View>
                         <View style={styles.detailContent}>
                             <Text style={styles.detailLabel}>Teléfono 1</Text>
-                            <Text style={styles.detailValueLink}>{clientDetails.telefono1}</Text>
+                            <TouchableOpacity
+                                onPress={() => openPhoneModal(clientDetails.telefono1)}
+                                style={styles.phoneButton}
+                            >
+                                <Text style={styles.phoneButtonText}>{clientDetails.telefono1}</Text>
+                                <Text style={styles.phoneButtonHint}>Toca para llamar o enviar SMS</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
                 )}
@@ -562,7 +714,13 @@ const ClientDetailsScreen = ({ route, navigation }) => {
                         </View>
                         <View style={styles.detailContent}>
                             <Text style={styles.detailLabel}>Teléfono 2</Text>
-                            <Text style={styles.detailValueLink}>{clientDetails.telefono2}</Text>
+                            <TouchableOpacity
+                                onPress={() => openPhoneModal(clientDetails.telefono2)}
+                                style={styles.phoneButton}
+                            >
+                                <Text style={styles.phoneButtonText}>{clientDetails.telefono2}</Text>
+                                <Text style={styles.phoneButtonHint}>Llamar o enviar mensaje</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
                 )}
@@ -579,28 +737,41 @@ const ClientDetailsScreen = ({ route, navigation }) => {
                     </View>
                 )}
                 
-                {clientDetails.direccion && (
-                    <View style={styles.detailRow}>
+                {mostrarDireccion && (
+                    <TouchableOpacity
+                        style={[styles.detailRow, gpsCoords ? styles.detailRowPressable : null]}
+                        activeOpacity={gpsCoords ? 0.8 : 1}
+                        onPress={gpsCoords ? handleDireccionPress : undefined}
+                        disabled={!gpsCoords}
+                    >
                         <View style={styles.detailIcon}>
                             <Text>📍</Text>
                         </View>
                         <View style={styles.detailContent}>
                             <Text style={styles.detailLabel}>Dirección</Text>
-                            <Text style={styles.detailValue}>{clientDetails.direccion}</Text>
+                            {direccionPrincipal !== '' && (
+                                <Text style={styles.detailValue}>{direccionPrincipal}</Text>
+                            )}
+                            {(referenciaSubItem || gpsSubItem) && (
+                                <View style={styles.detailSubList}>
+                                    {referenciaSubItem && (
+                                        <View style={styles.detailSubItem}>
+                                            <Text style={styles.detailSubLabel}>Referencia</Text>
+                                            <Text style={styles.detailSubValue}>{referenciaSubItem}</Text>
+                                        </View>
+                                    )}
+                                    {gpsSubItem && (
+                                        <View style={styles.detailSubItem}>
+                                            <Text style={styles.detailSubLabel}>
+                                                GPS {gpsCoords && <Text style={styles.detailHint}>(toca para abrir)</Text>}
+                                            </Text>
+                                            <Text style={styles.detailSubValue}>{gpsSubItem}</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            )}
                         </View>
-                    </View>
-                )}
-                
-                {clientDetails.referencia && (
-                    <View style={styles.detailRow}>
-                        <View style={styles.detailIcon}>
-                            <Text>🗺️</Text>
-                        </View>
-                        <View style={styles.detailContent}>
-                            <Text style={styles.detailLabel}>Referencia</Text>
-                            <Text style={styles.detailValue}>{clientDetails.referencia}</Text>
-                        </View>
-                    </View>
+                    </TouchableOpacity>
                 )}
             </View>
             
@@ -711,6 +882,8 @@ const ClientDetailsScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
+            {renderMapaModal()}
+            {renderPhoneModal()}
             {/* Menú Horizontal Animado - Encima de la cabecera */}
             <Animated.View style={[
                 {
