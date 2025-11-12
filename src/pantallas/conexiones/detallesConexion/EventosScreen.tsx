@@ -91,7 +91,7 @@ const EventosScreen = ({ route, navigation }) => {
 
     const renderActionIcon = (tipoEvento, size = 24, color = '#6B7280') => {
         const tipo = tipoEvento?.toLowerCase() || '';
-        
+
         if (tipo.includes('corte') || tipo.includes('suspend')) {
             return <Icon name="content-cut" size={size} color={color} />; // Tijeras/corte
         }
@@ -103,6 +103,12 @@ const EventosScreen = ({ route, navigation }) => {
         }
         if (tipo.includes('alta') || tipo.includes('crear') || tipo.includes('instal')) {
             return <Icon name="build" size={size} color={color} />; // Instalación/construcción
+        }
+        if (tipo.includes('cambio de servicio') || tipo.includes('cambiar servicio')) {
+            return <Icon name="swap-horiz" size={size} color={color} />; // Cambio de servicio
+        }
+        if (tipo.includes('asignación de servicio') || tipo.includes('asignar servicio')) {
+            return <Icon name="add-circle" size={size} color={color} />; // Asignación de servicio
         }
         if (tipo.includes('modif') || tipo.includes('edit')) {
             return <Icon name="edit" size={size} color={color} />; // Modificación
@@ -116,6 +122,8 @@ const EventosScreen = ({ route, navigation }) => {
         if (tipo.includes('reconex') || tipo.includes('activ')) return '#10B981';
         if (tipo.includes('baja') || tipo.includes('cancel')) return '#F59E0B';
         if (tipo.includes('alta') || tipo.includes('crear')) return '#3B82F6';
+        if (tipo.includes('cambio de servicio') || tipo.includes('cambiar servicio')) return '#0EA5E9'; // Cyan
+        if (tipo.includes('asignación de servicio') || tipo.includes('asignar servicio')) return '#14B8A6'; // Teal
         if (tipo.includes('modif') || tipo.includes('edit')) return '#8B5CF6';
         return '#6B7280';
     };
