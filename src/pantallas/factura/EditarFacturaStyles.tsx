@@ -301,6 +301,15 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         textAlign: 'right',
     },
 
+    deleteButton: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 6,
+        backgroundColor: isDarkMode ? colors.error[900] + '20' : colors.error[50],
+    },
+
     // Totals section
     totalsContainer: {
         backgroundColor: isDarkMode ? colors.gray[700] : colors.gray[50],

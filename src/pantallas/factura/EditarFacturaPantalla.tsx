@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, Dimensions } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getStyles } from './EditarFacturaStyles';
 import ThemeSwitch from '../../componentes/themeSwitch';
+import registrarEventoFactura from './Functions/RegistrarEventoFactura';
 
 const EditarFacturaPantalla = ({ route, navigation }) => {
     const { facturaData, isDarkMode } = route.params;
@@ -11,6 +14,11 @@ const EditarFacturaPantalla = ({ route, navigation }) => {
     const [impuestos, setImpuestos] = useState(null);
     const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
     const [focusedInput, setFocusedInput] = useState(null);
+    const [idUsuario, setIdUsuario] = useState(null);
+    // Hacer copia profunda de artículos originales para comparar cambios más tarde
+    const [articulosOriginales, setArticulosOriginales] = useState(
+        JSON.parse(JSON.stringify(facturaData.articulos))
+    );
 
     // Listen for orientation changes
     useEffect(() => {
@@ -21,6 +29,22 @@ const EditarFacturaPantalla = ({ route, navigation }) => {
     }, []);
 
     console.log('Factura Data:', JSON.stringify(facturaData, null, 2));
+
+    // Cargar ID de usuario
+    useEffect(() => {
+        const loadUserId = async () => {
+            try {
+                const jsonValue = await AsyncStorage.getItem('@loginData');
+                const userData = jsonValue != null ? JSON.parse(jsonValue) : null;
+                if (userData && userData.id) {
+                    setIdUsuario(userData.id);
+                }
+            } catch (error) {
+                console.error('Error al cargar el ID de usuario:', error);
+            }
+        };
+        loadUserId();
+    }, []);
 
     // Consultar impuestos desde el backend al cargar
     useEffect(() => {
@@ -68,6 +92,76 @@ const EditarFacturaPantalla = ({ route, navigation }) => {
         }
 
         setEditableFactura((prev) => ({ ...prev, articulos: newArticulos }));
+    };
+
+    // Función para eliminar un artículo
+    const eliminarArticulo = (index) => {
+        const articuloAEliminar = editableFactura.articulos[index];
+
+        Alert.alert(
+            "Eliminar Artículo",
+            `¿Estás seguro de eliminar el artículo "${articuloAEliminar.descripcion}"?`,
+            [
+                {
+                    text: "Cancelar",
+                    style: "cancel"
+                },
+                {
+                    text: "Eliminar",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            // Verificar que haya al menos 2 artículos (no se puede dejar la factura sin artículos)
+                            if (editableFactura.articulos.length <= 1) {
+                                Alert.alert("Error", "No puedes eliminar todos los artículos de la factura. Debe quedar al menos uno.");
+                                return;
+                            }
+
+                            // Eliminar artículo del backend
+                            const response = await axios.delete(
+                                `https://wellnet-rd.com:444/api/eliminar-articulo/${articuloAEliminar.id_articulo}`
+                            );
+
+                            console.log('🗑️ [EliminarArticulo] Respuesta del servidor:', response.data);
+
+                            if (response.status === 200) {
+                                // Registrar evento de artículo eliminado
+                                if (idUsuario) {
+                                    const montoArticulo = (Number(articuloAEliminar.cantidad_articulo) || 0) *
+                                                         (Number(articuloAEliminar.precio_unitario) || 0) -
+                                                         (Number(articuloAEliminar.descuentoArticulo) || 0);
+
+                                    console.log('✅ [EliminarArticulo] Registrando evento...');
+                                    await registrarEventoFactura(
+                                        editableFactura.factura.id_factura,
+                                        idUsuario,
+                                        'Artículo eliminado',
+                                        `Artículo "${articuloAEliminar.descripcion}" eliminado. Cantidad: ${articuloAEliminar.cantidad_articulo}, Monto: ${formatMoney(montoArticulo)}`,
+                                        JSON.stringify({
+                                            id_articulo: articuloAEliminar.id_articulo,
+                                            descripcion: articuloAEliminar.descripcion,
+                                            cantidad: Number(articuloAEliminar.cantidad_articulo),
+                                            precio_unitario: Number(articuloAEliminar.precio_unitario),
+                                            descuento: Number(articuloAEliminar.descuentoArticulo) || 0,
+                                            monto_eliminado: montoArticulo
+                                        })
+                                    );
+                                }
+
+                                // Actualizar el estado local eliminando el artículo
+                                const nuevosArticulos = editableFactura.articulos.filter((_, i) => i !== index);
+                                setEditableFactura((prev) => ({ ...prev, articulos: nuevosArticulos }));
+
+                                Alert.alert("Éxito", "Artículo eliminado correctamente.");
+                            }
+                        } catch (error) {
+                            console.error('❌ [EliminarArticulo] Error al eliminar artículo:', error);
+                            Alert.alert("Error", "No se pudo eliminar el artículo. Por favor, intenta nuevamente.");
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     // Calcular subtotales y totales dinámicamente
@@ -187,6 +281,75 @@ const EditarFacturaPantalla = ({ route, navigation }) => {
                             );
 
                             console.log('Respuesta del servidor:', response.data);
+
+                            // Registrar evento de edición de artículos
+                            console.log('🔍 [EditarFactura] idUsuario:', idUsuario);
+                            console.log('🔍 [EditarFactura] Artículos originales:', articulosOriginales.length);
+                            console.log('🔍 [EditarFactura] Artículos editados:', editableFactura.articulos.length);
+
+                            if (idUsuario) {
+                                // Detectar cambios en artículos
+                                const cambios = [];
+                                editableFactura.articulos.forEach((articuloEditado, index) => {
+                                    const articuloOriginal = articulosOriginales[index];
+                                    if (articuloOriginal) {
+                                        console.log(`🔍 [EditarFactura] Comparando artículo ${index}:`, {
+                                            original_cantidad: articuloOriginal.cantidad_articulo,
+                                            editado_cantidad: articuloEditado.cantidad_articulo,
+                                            original_precio: articuloOriginal.precio_unitario,
+                                            editado_precio: articuloEditado.precio_unitario,
+                                            original_descuento: articuloOriginal.descuentoArticulo,
+                                            editado_descuento: articuloEditado.descuentoArticulo
+                                        });
+
+                                        const cambiosArticulo = [];
+
+                                        if (Number(articuloEditado.cantidad_articulo) !== Number(articuloOriginal.cantidad_articulo)) {
+                                            cambiosArticulo.push(`Cantidad: ${articuloOriginal.cantidad_articulo} → ${articuloEditado.cantidad_articulo}`);
+                                        }
+                                        if (Number(articuloEditado.precio_unitario) !== Number(articuloOriginal.precio_unitario)) {
+                                            cambiosArticulo.push(`Precio: ${formatMoney(articuloOriginal.precio_unitario)} → ${formatMoney(articuloEditado.precio_unitario)}`);
+                                        }
+                                        if (Number(articuloEditado.descuentoArticulo) !== Number(articuloOriginal.descuentoArticulo)) {
+                                            cambiosArticulo.push(`Descuento: ${formatMoney(articuloOriginal.descuentoArticulo)} → ${formatMoney(articuloEditado.descuentoArticulo)}`);
+                                        }
+
+                                        if (cambiosArticulo.length > 0) {
+                                            cambios.push({
+                                                descripcion: articuloEditado.descripcion,
+                                                cambios: cambiosArticulo
+                                            });
+                                        }
+                                    }
+                                });
+
+                                console.log('🔍 [EditarFactura] Cambios detectados:', cambios.length);
+                                if (cambios.length > 0) {
+                                    console.log('✅ [EditarFactura] Registrando evento de artículos editados...');
+                                } else {
+                                    console.log('⚠️ [EditarFactura] No se detectaron cambios en cantidad, precio o descuento');
+                                }
+
+                                if (cambios.length > 0) {
+                                    const descripcionCambios = cambios.map(c =>
+                                        `• ${c.descripcion}: ${c.cambios.join(', ')}`
+                                    ).join('\n');
+
+                                    await registrarEventoFactura(
+                                        editableFactura.factura.id_factura,
+                                        idUsuario,
+                                        'Artículos editados',
+                                        `Se editaron ${cambios.length} artículo(s) en la factura #${editableFactura.factura.id_factura}:\n${descripcionCambios}`,
+                                        JSON.stringify({
+                                            articulos_modificados: cambios.length,
+                                            monto_total_anterior: facturaData.factura.monto_total,
+                                            monto_total_nuevo: montoTotal,
+                                            cambios_detallados: cambios
+                                        })
+                                    );
+                                }
+                            }
+
                             Alert.alert("Éxito", "Los cambios se han guardado correctamente.");
                             navigation.goBack();
                         } catch (error) {
@@ -269,13 +432,14 @@ const EditarFacturaPantalla = ({ route, navigation }) => {
                                 persistentScrollbar={true}
                                 contentContainerStyle={{ flexGrow: 1 }}
                             >
-                                <View style={[styles.tableContainer, { minWidth: Math.max(620, screenWidth - 32) }]}>
+                                <View style={[styles.tableContainer, { minWidth: Math.max(680, screenWidth - 32) }]}>
                                     <View style={styles.tableHeader}>
                                         <Text style={[styles.tableCellHeader, { width: 80 }]}>Cant.</Text>
                                         <Text style={[styles.tableCellHeader, { width: 200, textAlign: 'left' }]}>Descripción</Text>
                                         <Text style={[styles.tableCellHeader, { width: 110 }]}>Descuento</Text>
                                         <Text style={[styles.tableCellHeader, { width: 110 }]}>Precio U.</Text>
                                         <Text style={[styles.tableCellHeader, { width: 120 }]}>Importe</Text>
+                                        <Text style={[styles.tableCellHeader, { width: 60 }]}>Acción</Text>
                                     </View>
                                     
                                     {editableFactura.articulos.map((item, index) => (
@@ -337,6 +501,12 @@ const EditarFacturaPantalla = ({ route, navigation }) => {
                                                     (item.descuentoArticulo || 0)
                                                 )}
                                             </Text>
+                                            <TouchableOpacity
+                                                style={[styles.deleteButton, { width: 60 }]}
+                                                onPress={() => eliminarArticulo(index)}
+                                            >
+                                                <Icon name="delete" size={20} color="#EF4444" />
+                                            </TouchableOpacity>
                                         </View>
                                     ))}
                                 </View>

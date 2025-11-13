@@ -38,6 +38,7 @@ import guardarNuevoMonto from './Functions/GuardarNuevoMonto';
 import registrarNavegacion from './Functions/RegisterNavigation';
 import formatDate from './Functions/FormatDateUtility';
 import handleGuardarNotaRevision from './Functions/GuardarNotaRevision';
+import registrarEventoFactura from './Functions/RegistrarEventoFactura';
 import { useFacturaDetails } from './Use/useFacturaDetails'; // (No se está usando en este ejemplo, pero podrías implementarlo)
 
 // === Funciones Auxiliares (utils) ========================================= //
@@ -67,7 +68,7 @@ function formatMoney(amount) {
 }
 
 // Funciones para impresión
-async function handlePrintFactura(facturaData, selectedPrinter, Alert) {
+async function handlePrintFactura(facturaData, selectedPrinter, Alert, idUsuario) {
     if (!facturaData) {
         Alert.alert('Error', 'No hay detalles de factura para imprimir.');
         return;
@@ -161,6 +162,20 @@ async function handlePrintFactura(facturaData, selectedPrinter, Alert) {
     try {
         await ThermalPrinterModule.printBluetooth(printerConfig);
         Alert.alert('Éxito', 'Factura impresa correctamente.');
+
+        // Registrar evento de impresión
+        if (idUsuario) {
+            await registrarEventoFactura(
+                facturaData.factura.id_factura,
+                idUsuario,
+                'Factura impresa',
+                `Factura #${facturaData.factura.id_factura} impresa en impresora ${selectedPrinter.deviceName || 'desconocida'}`,
+                JSON.stringify({
+                    mac_address: selectedPrinter.macAddress,
+                    device_name: selectedPrinter.deviceName
+                })
+            );
+        }
     } catch (error) {
         console.error('Error al imprimir:', error);
         Alert.alert('Error', 'No se pudo imprimir la factura. Verifica la conexión con la impresora.');
@@ -367,14 +382,14 @@ ${new Date().toLocaleString('es-DO')}`;
 }
 
 // Función para compartir por WhatsApp
-async function shareViaWhatsApp(facturaData, clientPhone) {
+async function shareViaWhatsApp(facturaData, clientPhone, idUsuario) {
     try {
         const facturaText = formatFacturaForSharing(facturaData);
         const encodedText = encodeURIComponent(facturaText);
-        
+
         // Limpiar número de teléfono (solo números)
         const cleanPhone = clientPhone?.replace(/\D/g, '') || '';
-        
+
         let whatsappUrl;
         if (cleanPhone) {
             // Si hay número, enviar directamente al cliente
@@ -388,6 +403,17 @@ async function shareViaWhatsApp(facturaData, clientPhone) {
         const canOpen = await Linking.canOpenURL(whatsappUrl);
         if (canOpen) {
             await Linking.openURL(whatsappUrl);
+
+            // Registrar evento de compartir por WhatsApp
+            if (idUsuario) {
+                await registrarEventoFactura(
+                    facturaData.factura.id_factura,
+                    idUsuario,
+                    'Factura compartida - WhatsApp',
+                    `Factura #${facturaData.factura.id_factura} compartida por WhatsApp${cleanPhone ? ` al número ${cleanPhone}` : ''}`,
+                    JSON.stringify({ telefono: cleanPhone || 'sin número' })
+                );
+            }
         } else {
             Alert.alert(
                 'WhatsApp no disponible',
@@ -402,11 +428,11 @@ async function shareViaWhatsApp(facturaData, clientPhone) {
 }
 
 // Función para enviar por Email
-async function shareViaEmail(facturaData, clientEmail) {
+async function shareViaEmail(facturaData, clientEmail, idUsuario) {
     try {
         const facturaText = formatFacturaForSharing(facturaData);
         const subject = `Factura #${facturaData?.factura?.id_factura} - ${facturaData?.isp?.nombre}`;
-        
+
         const emailBody = `Estimado(a) ${facturaData?.cliente?.nombres} ${facturaData?.cliente?.apellidos},
 
 Adjunto encontrará los detalles de su factura:
@@ -420,7 +446,7 @@ ${facturaData?.isp?.nombre}`;
 
         const encodedSubject = encodeURIComponent(subject);
         const encodedBody = encodeURIComponent(emailBody);
-        
+
         let emailUrl;
         if (clientEmail) {
             emailUrl = `mailto:${clientEmail}?subject=${encodedSubject}&body=${encodedBody}`;
@@ -431,6 +457,17 @@ ${facturaData?.isp?.nombre}`;
         const canOpen = await Linking.canOpenURL(emailUrl);
         if (canOpen) {
             await Linking.openURL(emailUrl);
+
+            // Registrar evento de compartir por Email
+            if (idUsuario) {
+                await registrarEventoFactura(
+                    facturaData.factura.id_factura,
+                    idUsuario,
+                    'Factura compartida - Email',
+                    `Factura #${facturaData.factura.id_factura} compartida por Email${clientEmail ? ` a ${clientEmail}` : ''}`,
+                    JSON.stringify({ email: clientEmail || 'sin email' })
+                );
+            }
         } else {
             Alert.alert('Error', 'No se pudo abrir la aplicación de email');
         }
@@ -441,10 +478,10 @@ ${facturaData?.isp?.nombre}`;
 }
 
 // Función para compartir como texto plano
-async function shareAsText(facturaData) {
+async function shareAsText(facturaData, idUsuario) {
     try {
         const facturaText = formatFacturaForSharing(facturaData);
-        
+
         const result = await Share.share({
             message: facturaText,
             title: `Factura #${facturaData?.factura?.id_factura}`,
@@ -452,6 +489,17 @@ async function shareAsText(facturaData) {
 
         if (result.action === Share.sharedAction) {
             console.log('Contenido compartido exitosamente');
+
+            // Registrar evento de compartir como texto
+            if (idUsuario) {
+                await registrarEventoFactura(
+                    facturaData.factura.id_factura,
+                    idUsuario,
+                    'Factura compartida - Texto',
+                    `Factura #${facturaData.factura.id_factura} compartida como texto plano`,
+                    ''
+                );
+            }
         }
     } catch (error) {
         console.error('Error al compartir:', error);
@@ -460,7 +508,7 @@ async function shareAsText(facturaData) {
 }
 
 // Función para generar PDF (requiere backend)
-async function generateAndSharePDF(facturaData) {
+async function generateAndSharePDF(facturaData, idUsuario) {
     try {
         Alert.alert(
             'Generando PDF',
@@ -481,6 +529,17 @@ async function generateAndSharePDF(facturaData) {
                 url: response.data.pdfUrl,
                 title: `Factura #${facturaData?.factura?.id_factura} - PDF`,
             });
+
+            // Registrar evento de generar PDF
+            if (idUsuario) {
+                await registrarEventoFactura(
+                    facturaData.factura.id_factura,
+                    idUsuario,
+                    'Factura compartida - PDF',
+                    `Factura #${facturaData.factura.id_factura} compartida como PDF`,
+                    JSON.stringify({ pdf_url: response.data.pdfUrl })
+                );
+            }
         } else {
             Alert.alert('Error', 'No se pudo generar el PDF');
         }
@@ -491,29 +550,29 @@ async function generateAndSharePDF(facturaData) {
 }
 
 // Función principal para mostrar opciones de compartir
-function handleShareFactura(facturaData) {
+function handleShareFactura(facturaData, idUsuario) {
     const clientPhone = facturaData?.cliente?.telefono1;
     const clientEmail = facturaData?.cliente?.correo_elect;
-    
+
     Alert.alert(
         '📤 Compartir Factura',
         'Seleccione cómo desea compartir esta factura:',
         [
             {
                 text: '📱 WhatsApp',
-                onPress: () => shareViaWhatsApp(facturaData, clientPhone),
+                onPress: () => shareViaWhatsApp(facturaData, clientPhone, idUsuario),
             },
             {
                 text: '📧 Email',
-                onPress: () => shareViaEmail(facturaData, clientEmail),
+                onPress: () => shareViaEmail(facturaData, clientEmail, idUsuario),
             },
             {
                 text: '📄 PDF',
-                onPress: () => generateAndSharePDF(facturaData),
+                onPress: () => generateAndSharePDF(facturaData, idUsuario),
             },
             {
                 text: '📋 Texto',
-                onPress: () => shareAsText(facturaData),
+                onPress: () => shareAsText(facturaData, idUsuario),
             },
             {
                 text: 'Cancelar',
@@ -771,6 +830,15 @@ const DetalleFacturaPantalla = () => {
             setNota('');
             setModalNotaVisible(false);
 
+            // Registrar evento de nota agregada
+            await registrarEventoFactura(
+                id_factura,
+                idUsuario,
+                'Nota agregada',
+                `Nueva nota agregada a la factura #${id_factura}`,
+                JSON.stringify({ id_nota: idNota, nota_preview: nota.substring(0, 100) })
+            );
+
             // 2. Registrar la revisión de la factura con el id_nota recién creado
             const facturaEnRevision = checklist.find(item => item.id === 1).checked;
             if (facturaEnRevision) {
@@ -790,6 +858,15 @@ const DetalleFacturaPantalla = () => {
                 const revisionData = await responseRevision.json();
                 if (responseRevision.ok) {
                     Alert.alert('Revisión actualizada', revisionData.message);
+
+                    // Registrar evento de revisión
+                    await registrarEventoFactura(
+                        id_factura,
+                        idUsuario,
+                        'Revisión registrada',
+                        `Factura #${id_factura} marcada en revisión`,
+                        JSON.stringify({ id_nota: idNota })
+                    );
                 } else {
                     throw new Error(revisionData.message || 'Error al registrar la revisión');
                 }
@@ -879,6 +956,7 @@ const DetalleFacturaPantalla = () => {
         { id: '9', icon: 'attach-money', action: () => navigation.navigate('ClienteFacturasScreen', {  clientId: facturaData?.cliente?.id_cliente, usuarioId: id_usuario  }) },
         // { id: '9', screen: null, action: () => setMenuVisible(true), icon: 'money' },
         { id: '5', icon: 'person', action: () => navigation.navigate('ClientDetailsScreen', { clientId: facturaData?.cliente?.id_cliente }) },
+        { id: '11', icon: 'history', action: () => navigation.navigate('EventosFacturaScreen', { id_factura, id_cliente: facturaData?.cliente?.id_cliente }) },
         { id: '10', icon: 'note-add', action: () => setModalNotaVisible(true) },
         { id: '1', icon: 'add', action: () => navigation.navigate('AgregarArticuloPantalla', { id_factura, facturaData }) },
         {
@@ -886,8 +964,8 @@ const DetalleFacturaPantalla = () => {
             icon: 'edit',
             action: () => navigation.navigate('EditarFacturaPantalla', { facturaData, isDarkMode }) // Navegación a la pantalla de edición
         },
-        { id: '7', icon: 'print', action: () => handlePrintFactura(facturaData, selectedPrinter, Alert) },
-        { id: '8', icon: 'share', action: () => handleShareFactura(facturaData) },
+        { id: '7', icon: 'print', action: () => handlePrintFactura(facturaData, selectedPrinter, Alert, idUsuario) },
+        { id: '8', icon: 'share', action: () => handleShareFactura(facturaData, idUsuario) },
         { id: '2', title: 'Revisiones', screen: 'FacturasEnRevisionScreen', params: { estado: 'en_revision' } },
         { id: '3', title: 'Ingresos', screen: 'IngresosScreen' },
     ];

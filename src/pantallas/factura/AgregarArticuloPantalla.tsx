@@ -15,6 +15,7 @@ import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
 import { getStyles } from './AgregarArticuloStyles';
 import ThemeSwitch from '../../componentes/themeSwitch';
+import registrarEventoFactura from './Functions/RegistrarEventoFactura';
 
 
 const AgregarArticuloPantalla = () => {
@@ -38,6 +39,7 @@ const AgregarArticuloPantalla = () => {
     const [conexionSeleccionada, setConexionSeleccionada] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [focusedInput, setFocusedInput] = useState(null);
+    const [idUsuario, setIdUsuario] = useState(null);
 
     const styles = getStyles(isDarkMode);
 
@@ -165,6 +167,25 @@ const AgregarArticuloPantalla = () => {
         loadTheme();
     }, []);
 
+    // Cargar ID de usuario
+    useEffect(() => {
+        const loadUserId = async () => {
+            try {
+                const jsonValue = await AsyncStorage.getItem('@loginData');
+                const userData = jsonValue != null ? JSON.parse(jsonValue) : null;
+                if (userData && userData.id) {
+                    setIdUsuario(userData.id);
+                    console.log('🔍 [AgregarArticulo] ID Usuario cargado:', userData.id);
+                } else {
+                    console.warn('⚠️ [AgregarArticulo] No se encontró ID de usuario en AsyncStorage');
+                }
+            } catch (error) {
+                console.error('❌ [AgregarArticulo] Error al cargar el ID de usuario:', error);
+            }
+        };
+        loadUserId();
+    }, []);
+
     // Función para manejar la solicitud al backend
     const agregarArticulo = async () => {
         if (!id_factura || !descripcion || !cantidad || !precioUnitario) {
@@ -209,6 +230,29 @@ const AgregarArticuloPantalla = () => {
                             );
 
                             if (response.status === 200 || response.status === 201) {
+                                // Registrar evento de artículo agregado
+                                console.log('🔍 [AgregarArticulo] Artículo agregado exitosamente. idUsuario:', idUsuario);
+                                if (idUsuario) {
+                                    console.log('✅ [AgregarArticulo] Llamando a registrarEventoFactura...');
+                                    await registrarEventoFactura(
+                                        id_factura,
+                                        idUsuario,
+                                        'Artículo agregado',
+                                        `Artículo "${descripcion}" agregado: ${cantidad} x ${formatMoney(parseFloat(precioUnitario))} = ${formatMoney(montoTotal)}`,
+                                        JSON.stringify({
+                                            id_producto_servicio: servicioSeleccionado,
+                                            id_conexion: conexionSeleccionada,
+                                            descripcion,
+                                            cantidad: parseFloat(cantidad),
+                                            precio_unitario: parseFloat(precioUnitario),
+                                            descuento: parseFloat(descuento) || 0,
+                                            total: parseFloat(montoTotal)
+                                        })
+                                    );
+                                } else {
+                                    console.warn('⚠️ [AgregarArticulo] No se puede registrar evento: idUsuario es null');
+                                }
+
                                 Alert.alert('Éxito', 'Artículo agregado correctamente.', [
                                     {
                                         text: 'Aceptar',
