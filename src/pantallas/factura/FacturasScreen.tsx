@@ -26,6 +26,16 @@ const FacturasScreen = () => {
     const route = useRoute();
     const { id_ciclo, estado } = route.params || {}; // Extraemos `id_ciclo` y `estado` desde los parámetros de la ruta
 
+    // Handle logout
+    const handleLogout = async () => {
+        try {
+            await AsyncStorage.removeItem('@loginData');
+            navigation.reset({ index: 0, routes: [{ name: 'LoginScreen' }] });
+        } catch (error) {
+            console.error('Error al cerrar sesión:', error);
+        }
+    };
+
     // useEffect para realizar la consulta a la API una vez que el componente se monte o `id_ciclo` cambie
     useEffect(() => {
         // Validación: Si no hay un `id_ciclo` válido, mostramos un error
@@ -432,7 +442,7 @@ const FacturasScreen = () => {
                     { title: 'Inicio', action: () => navigation.navigate('HomeScreen') },
                     { title: 'Perfil', action: () => navigation.navigate('ProfileScreen') },
                     { title: 'Configuración', action: () => navigation.navigate('SettingsScreen') },
-                    { title: 'Cerrar Sesión', action: () => console.log('Cerrando sesión') },
+                    { title: 'Cerrar Sesión', action: handleLogout },
                 ]}
                 isDarkMode={isDarkMode}
                 onItemPress={(item) => {

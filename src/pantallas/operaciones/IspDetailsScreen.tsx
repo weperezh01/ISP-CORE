@@ -26,6 +26,7 @@ import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import CardButtonLayout from './componentes/renderCard';
 import { set } from 'date-fns';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // -----------------------------------------------------------------------------
 // Componente para texto parpadeante moderno
@@ -177,6 +178,20 @@ const IspDetailsScreen = ({ route, navigation }) => {
   const headerHeight = useRef(new Animated.Value(1)).current;
   const lastScrollY = useRef(0);
   const scrollDirection = useRef('down');
+
+  // ---------------------------------------------------------------------------
+  // Función para manejar el cierre de sesión
+  // ---------------------------------------------------------------------------
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('@loginData');
+      navigation.reset({ index: 0, routes: [{ name: 'LoginScreen' }] });
+      Alert.alert('Sesión cerrada', 'Has cerrado sesión exitosamente.');
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+      Alert.alert('Error', 'No se pudo cerrar sesión.');
+    }
+  };
 
   // ---------------------------------------------------------------------------
   // Función para manejar el scroll y animación del header
@@ -1006,7 +1021,8 @@ const botonesData = [
     {
         id: '10',
         title: 'Configuraciones',
-        screen: 'ConfiguracionesScreen',
+        screen: 'ConfiguracionesListScreen',
+        params: { id_isp: isp.id_isp },
         permiso: 10,
         icon: 'settings',
         color: '#FFD700',
@@ -1023,8 +1039,8 @@ const botonesData = [
     {
         id: '17',
         title: 'Instalaciones',
-        screen: 'InstalacionForm',
-        params: { id_isp: isp.id_isp, isEditMode: false },
+        screen: 'InstalacionesListScreen',
+        params: { id_isp: isp.id_isp },
         permiso: 4,
         icon: 'handyman',
         color: '#22A6B3',
@@ -1874,7 +1890,7 @@ const botonesData = [
           { title: 'Inicio', action: () => navigation.navigate('HomeScreen') },
           { title: 'Perfil', action: () => navigation.navigate('ProfileScreen') },
           { title: 'Configuración', action: () => navigation.navigate('SettingsScreen') },
-          { title: 'Cerrar Sesión', action: () => console.log('Cerrando sesión') },
+          { title: 'Cerrar Sesión', action: handleLogout },
         ]}
         isDarkMode={isDarkMode}
         onItemPress={(item) => {

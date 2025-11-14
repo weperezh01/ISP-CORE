@@ -121,7 +121,18 @@ const ClienteFacturasScreen = ({ route }) => {
     console.log('Fecha y Hora:', currentDateTime.toLocaleString());
     console.log('clientInfo:', JSON.stringify(clientInfo, null, 2));
 
-  
+    // Handle logout
+    const handleLogout = async () => {
+        try {
+            await AsyncStorage.removeItem('@loginData');
+            navigation.reset({ index: 0, routes: [{ name: 'LoginScreen' }] });
+            Alert.alert('Sesión cerrada', 'Has cerrado sesión exitosamente.');
+        } catch (error) {
+            console.error('Error al cerrar sesión:', error);
+            Alert.alert('Error', 'No se pudo cerrar sesión.');
+        }
+    };
+
     const botones = [
         {
             id: '6',
@@ -1458,7 +1469,7 @@ const ClienteFacturasScreen = ({ route }) => {
                     { title: 'Perfil', action: () => navigation.navigate('ProfileScreen') },
                     { title: 'Configuración', action: () => navigation.navigate('SettingsScreen') },
                     { title: 'Dispositivos Bluetooth', action: () => navigation.navigate('BluetoothDevicesScreen') },
-                    { title: 'Cerrar Sesión', action: () => console.log('Cerrando sesión') },
+                    { title: 'Cerrar Sesión', action: handleLogout },
                 ]}
                 isDarkMode={isDarkMode}
                 onItemPress={(item) => {

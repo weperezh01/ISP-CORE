@@ -270,7 +270,7 @@ const MainScreen = () => {
           { title: 'Inicio', action: () => navigation.navigate('HomeScreen') },
           { title: 'Perfil', action: () => navigation.navigate('ProfileScreen') },
           { title: 'Configuración', action: () => navigation.navigate('SettingsScreen') },
-          { title: 'Cerrar Sesión', action: () => console.log('Cerrando sesión') },
+          { title: 'Cerrar Sesión', action: handleLogout },
         ]}
         isDarkMode={isDarkMode}
         onItemPress={(item) => {

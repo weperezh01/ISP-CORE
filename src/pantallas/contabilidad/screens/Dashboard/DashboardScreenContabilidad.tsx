@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { Card, Icon } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { formatCurrency } from '../../utils/formatCurrency';
@@ -9,6 +9,7 @@ import HorizontalMenu from '../../../../componentes/HorizontalMenu';
 import MenuModal from '../../../../componentes/MenuModal';
 import { useIspDetails } from '../../../../pantallas/operaciones/hooks/useIspDetails';
 import { useTheme } from '../../../../../ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const DashboardScreenContabilidad = ({ route }) => {
     // 1. Tema e estilos
@@ -91,6 +92,18 @@ const DashboardScreenContabilidad = ({ route }) => {
     const handleNextMonth = () => {
         const newDate = new Date(selectedMonth.setMonth(selectedMonth.getMonth() + 1));
         setSelectedMonth(newDate);
+    };
+
+    // Handle logout
+    const handleLogout = async () => {
+        try {
+            await AsyncStorage.removeItem('@loginData');
+            navigation.reset({ index: 0, routes: [{ name: 'LoginScreen' }] });
+            Alert.alert('Sesión cerrada', 'Has cerrado sesión exitosamente.');
+        } catch (error) {
+            console.error('Error al cerrar sesión:', error);
+            Alert.alert('Error', 'No se pudo cerrar sesión.');
+        }
     };
 
     // 3. useIspDetails para extraer datos y funciones
@@ -312,7 +325,7 @@ const DashboardScreenContabilidad = ({ route }) => {
                     { title: 'Inicio', action: () => navigation.navigate('HomeScreen') },
                     { title: 'Perfil', action: () => navigation.navigate('ProfileScreen') },
                     { title: 'Configuración', action: () => navigation.navigate('SettingsScreen') },
-                    { title: 'Cerrar Sesión', action: () => console.log('Cerrando sesión') },
+                    { title: 'Cerrar Sesión', action: handleLogout },
                 ]}
                 isDarkMode={isDarkMode}
                 onItemPress={(item) => {

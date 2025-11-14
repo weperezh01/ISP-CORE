@@ -67,6 +67,16 @@ const FacturacionesScreen = () => {
     const navigation = useNavigation();
     const [menuVisible, setMenuVisible] = useState(false);
 
+    // Handle logout
+    const handleLogout = async () => {
+        try {
+            await AsyncStorage.removeItem('@loginData');
+            navigation.reset({ index: 0, routes: [{ name: 'LoginScreen' }] });
+        } catch (error) {
+            console.error('Error al cerrar sesión:', error);
+        }
+    };
+
     useEffect(() => {
         const obtenerIspId = async () => {
             try {
@@ -307,7 +317,7 @@ const FacturacionesScreen = () => {
                     { title: 'Inicio', action: () => navigation.navigate('HomeScreen') },
                     { title: 'Perfil', action: () => navigation.navigate('ProfileScreen') },
                     { title: 'Configuración', action: () => navigation.navigate('SettingsScreen') },
-                    { title: 'Cerrar Sesión', action: () => console.log('Cerrando sesión') },
+                    { title: 'Cerrar Sesión', action: handleLogout },
                 ]}
                 isDarkMode={isDarkMode}
                 onItemPress={(item) => {

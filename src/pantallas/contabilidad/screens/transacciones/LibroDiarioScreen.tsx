@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Button } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Button, Alert } from 'react-native';
 import { useTheme } from '../../../../../ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import HorizontalMenu from '../../../../componentes/HorizontalMenu';
 import MenuModal from '../../../../componentes/MenuModal';
 import { useIspDetails } from '../../../../pantallas/operaciones/hooks/useIspDetails';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LibroDiarioScreen = ({ route }) => {
     const { isDarkMode, toggleTheme } = useTheme();
@@ -28,6 +29,18 @@ const LibroDiarioScreen = ({ route }) => {
 
         fetchTransacciones();
     }, []);
+
+    // Handle logout
+    const handleLogout = async () => {
+        try {
+            await AsyncStorage.removeItem('@loginData');
+            navigation.reset({ index: 0, routes: [{ name: 'LoginScreen' }] });
+            Alert.alert('Sesión cerrada', 'Has cerrado sesión exitosamente.');
+        } catch (error) {
+            console.error('Error al cerrar sesión:', error);
+            Alert.alert('Error', 'No se pudo cerrar sesión.');
+        }
+    };
 
     // 3. useIspDetails para extraer datos y funciones
         const {
@@ -164,7 +177,7 @@ const LibroDiarioScreen = ({ route }) => {
                     { title: 'Inicio', action: () => navigation.navigate('HomeScreen') },
                     { title: 'Perfil', action: () => navigation.navigate('ProfileScreen') },
                     { title: 'Configuración', action: () => navigation.navigate('SettingsScreen') },
-                    { title: 'Cerrar Sesión', action: () => console.log('Cerrando sesión') },
+                    { title: 'Cerrar Sesión', action: handleLogout },
                 ]}
                 isDarkMode={isDarkMode}
                 onItemPress={(item) => {

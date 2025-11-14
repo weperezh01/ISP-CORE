@@ -55,6 +55,18 @@ const ClientListScreen = ({ navigation }) => {
     const lastScrollY = useRef(0);
     const scrollDirection = useRef('down');
 
+    // Handle logout
+    const handleLogout = async () => {
+        try {
+            await AsyncStorage.removeItem('@loginData');
+            navigation.reset({ index: 0, routes: [{ name: 'LoginScreen' }] });
+            Alert.alert('Sesión cerrada', 'Has cerrado sesión exitosamente.');
+        } catch (error) {
+            console.error('Error al cerrar sesión:', error);
+            Alert.alert('Error', 'No se pudo cerrar sesión.');
+        }
+    };
+
     // Función para manejar el scroll y animación del header
     const handleScroll = Animated.event(
         [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -1130,7 +1142,7 @@ const ClientListScreen = ({ navigation }) => {
                     { title: 'Inicio', action: () => navigation.navigate('HomeScreen') },
                     { title: 'Perfil', action: () => navigation.navigate('ProfileScreen') },
                     { title: 'Configuración', action: () => navigation.navigate('SettingsScreen') },
-                    { title: 'Cerrar Sesión', action: () => console.log('Cerrando sesión') },
+                    { title: 'Cerrar Sesión', action: handleLogout },
                 ]}
                 isDarkMode={isDarkMode}
                 onItemPress={(item) => {

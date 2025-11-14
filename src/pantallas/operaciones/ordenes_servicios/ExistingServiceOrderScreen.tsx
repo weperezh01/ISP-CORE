@@ -6,6 +6,7 @@ import getStyles from './NewServiceOrderStyles';
 import HorizontalMenu from '../../../componentes/HorizontalMenu';
 import MenuModal from '../../../componentes/MenuModal';
 import { Card } from 'react-native-paper'; // Importa Card si usas react-native-paper
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 const ExistingServiceOrderScreen = ({ route, navigation }) => {
@@ -66,12 +67,17 @@ const ExistingServiceOrderScreen = ({ route, navigation }) => {
     const [filteredTecnicos, setFilteredTecnicos] = useState([]); // Lista filtrada de técnicos
     const [tecnicoModalVisible, setTecnicoModalVisible] = useState(false); // Control del modal de técnicos
 
-
-
-
-
-
-
+    // Handle logout
+    const handleLogout = async () => {
+        try {
+            await AsyncStorage.removeItem('@loginData');
+            navigation.reset({ index: 0, routes: [{ name: 'LoginScreen' }] });
+            Alert.alert('Sesión cerrada', 'Has cerrado sesión exitosamente.');
+        } catch (error) {
+            console.error('Error al cerrar sesión:', error);
+            Alert.alert('Error', 'No se pudo cerrar sesión.');
+        }
+    };
 
 
 
@@ -778,7 +784,7 @@ const ExistingServiceOrderScreen = ({ route, navigation }) => {
                     { title: 'Inicio', action: () => navigation.navigate('HomeScreen') },
                     { title: 'Perfil', action: () => navigation.navigate('ProfileScreen') },
                     { title: 'Configuración', action: () => navigation.navigate('SettingsScreen') },
-                    { title: 'Cerrar Sesión', action: () => console.log('Cerrando sesión') },
+                    { title: 'Cerrar Sesión', action: handleLogout },
                 ]}
                 isDarkMode={isDarkMode}
                 onItemPress={(item) => {

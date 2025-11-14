@@ -17,6 +17,7 @@ import HorizontalMenu from '../../../componentes/HorizontalMenu';
 import MenuModal from '../../../componentes/MenuModal';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 const AssignmentsScreen = ({ route, navigation }) => {
@@ -72,7 +73,17 @@ const AssignmentsScreen = ({ route, navigation }) => {
         applyFilters(false);
     }, [usuario, originalAssignments]);
 
-
+    // Handle logout
+    const handleLogout = async () => {
+        try {
+            await AsyncStorage.removeItem('@loginData');
+            navigation.reset({ index: 0, routes: [{ name: 'LoginScreen' }] });
+            Alert.alert('Sesión cerrada', 'Has cerrado sesión exitosamente.');
+        } catch (error) {
+            console.error('Error al cerrar sesión:', error);
+            Alert.alert('Error', 'No se pudo cerrar sesión.');
+        }
+    };
 
     // Función para obtener los datos del usuario
     const obtenerDatosUsuario = async () => {
@@ -775,7 +786,7 @@ const AssignmentsScreen = ({ route, navigation }) => {
                     { title: 'Inicio', action: () => navigation.navigate('HomeScreen') },
                     { title: 'Perfil', action: () => navigation.navigate('ProfileScreen') },
                     { title: 'Configuración', action: () => navigation.navigate('SettingsScreen') },
-                    { title: 'Cerrar Sesión', action: () => console.log('Cerrando sesión') },
+                    { title: 'Cerrar Sesión', action: handleLogout },
                 ]}
                 isDarkMode={isDarkMode}
                 onItemPress={(item) => {

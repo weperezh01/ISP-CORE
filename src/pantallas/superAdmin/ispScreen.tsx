@@ -105,6 +105,20 @@ const IspListScreen = ({ navigation }) => {
     );
 
     /* ======================================================
+       FUNCIÓN PARA MANEJAR EL CIERRE DE SESIÓN
+       ====================================================== */
+    const handleLogout = async () => {
+        try {
+            await AsyncStorage.removeItem('@loginData');
+            navigation.reset({ index: 0, routes: [{ name: 'LoginScreen' }] });
+            Alert.alert('Sesión cerrada', 'Has cerrado sesión exitosamente.');
+        } catch (error) {
+            console.error('Error al cerrar sesión:', error);
+            Alert.alert('Error', 'No se pudo cerrar sesión.');
+        }
+    };
+
+    /* ======================================================
        1. OBTENER DATOS USUARIO (AsyncStorage) AL MONTAR
        ====================================================== */
     useEffect(() => {
@@ -585,7 +599,7 @@ const IspListScreen = ({ navigation }) => {
                     { title: 'Inicio', action: () => navigation.navigate('HomeScreen') },
                     { title: 'Perfil', action: () => navigation.navigate('ProfileScreen') },
                     { title: 'Configuración', action: () => navigation.navigate('SettingsScreen') },
-                    { title: 'Cerrar Sesión', action: () => console.log('Cerrando sesión') },
+                    { title: 'Cerrar Sesión', action: handleLogout },
                 ]}
                 isDarkMode={isDarkMode}
                 onItemPress={(item) => {
