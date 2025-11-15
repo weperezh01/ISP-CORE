@@ -119,6 +119,20 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         gap: 12,
     },
 
+    refreshButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    refreshButtonText: {
+        fontSize: 20,
+        color: '#FFFFFF',
+    },
+
     // Content area
     contentContainer: {
         flex: 1,
@@ -512,5 +526,19 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         fontSize: 12,
         color: isDarkMode ? colors.gray[400] : colors.gray[600],
         fontStyle: 'italic',
+    },
+
+    cacheIndicator: {
+        fontSize: 11,
+        color: isDarkMode ? colors.warning[400] : colors.warning[600],
+        fontStyle: 'italic',
+        marginTop: 4,
+    },
+
+    realtimeIndicator: {
+        fontSize: 11,
+        color: isDarkMode ? colors.success[400] : colors.success[600],
+        fontWeight: '600',
+        marginTop: 4,
     },
 });

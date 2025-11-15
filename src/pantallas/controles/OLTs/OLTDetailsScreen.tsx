@@ -18,9 +18,12 @@ const OLTDetailsScreen = () => {
     const [olt, setOlt] = useState(null);
     const [onusStats, setOnusStats] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState(null);
     const [lastUpdate, setLastUpdate] = useState(null);
     const [usuarioId, setUsuarioId] = useState(id_usuario || null);
+    const [authToken, setAuthToken] = useState(null);
+    const [isCached, setIsCached] = useState(false);
 
     // Helper function to process API responses
     const processResponse = useCallback(async (response, context) => {
@@ -87,15 +90,16 @@ const OLTDetailsScreen = () => {
             if (jsonValue != null) {
                 const userData = JSON.parse(jsonValue);
                 setUsuarioId(userData.id);
+                setAuthToken(userData.token);
             }
         } catch (e) {
             console.error('Error al leer el nombre del usuario', e);
         }
     }, []);
 
-    // Fetch OLT details
-    const fetchOltDetails = useCallback(async () => {
-        console.log('🔍 [OLT Details] Fetching OLT details for ID:', oltId);
+    // Fetch OLT details (realtime)
+    const fetchOltDetails = useCallback(async (forceRefresh = false) => {
+        console.log('🔍 [OLT Details] Fetching OLT details for ID:', oltId, 'Force refresh:', forceRefresh);
 
         if (!oltId) {
             setError('ID de OLT no proporcionado');
@@ -103,22 +107,38 @@ const OLTDetailsScreen = () => {
             return;
         }
 
+        if (!authToken) {
+            console.log('⚠️ [OLT Details] No auth token available yet');
+            return;
+        }
+
         try {
-            setIsLoading(true);
+            if (forceRefresh) {
+                setIsRefreshing(true);
+            } else {
+                setIsLoading(true);
+            }
             setError(null);
 
-            const response = await fetch(`https://wellnet-rd.com:444/api/olts/detalles/${oltId}`, {
+            // Use realtime endpoint
+            const response = await fetch(`https://wellnet-rd.com:444/api/olts/realtime/detalles/${oltId}`, {
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                }
             });
 
             const data = await processResponse(response, 'OLT details');
 
-            console.log('✅ [OLT Details] Data received:', data);
+            console.log('✅ [OLT Details] Realtime data received:', data);
 
-            // Handle different response structures
+            // Handle response structure from realtime API
             let oltData = null;
-            if (data && data.data && data.data.olt) {
+            if (data && data.success && data.data && data.data.olt) {
+                oltData = data.data.olt;
+                setIsCached(data.cached || false);
+            } else if (data && data.data && data.data.olt) {
                 oltData = data.data.olt;
             } else if (data && data.olt) {
                 oltData = data.olt;
@@ -137,24 +157,38 @@ const OLTDetailsScreen = () => {
             setError(error.message);
         } finally {
             setIsLoading(false);
+            setIsRefreshing(false);
         }
-    }, [oltId, processResponse, registrarNavegacion]);
+    }, [oltId, authToken, processResponse, registrarNavegacion]);
 
-    // Fetch ONUs statistics
+    // Fetch ONUs statistics (realtime)
     const fetchOnusStats = useCallback(async () => {
         if (!oltId) return;
 
+        if (!authToken) {
+            console.log('⚠️ [OLT Details] No auth token for stats');
+            return;
+        }
+
         try {
-            const response = await fetch(`https://wellnet-rd.com:444/api/olts/${oltId}/onus/estadisticas`, {
+            // Use realtime endpoint
+            const response = await fetch(`https://wellnet-rd.com:444/api/olts/realtime/${oltId}/onus/estadisticas`, {
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                }
             });
 
             const data = await processResponse(response, 'ONUs statistics');
 
-            // Handle different response structures
+            console.log('✅ [OLT Details] Realtime stats received:', data);
+
+            // Handle response structure from realtime API
             let statsData = null;
-            if (data && data.data && data.data.estadisticas) {
+            if (data && data.success && data.data && data.data.estadisticas) {
+                statsData = data.data.estadisticas;
+            } else if (data && data.data && data.data.estadisticas) {
                 statsData = data.data.estadisticas;
             } else if (data && data.estadisticas) {
                 statsData = data.estadisticas;
@@ -168,7 +202,7 @@ const OLTDetailsScreen = () => {
             console.error('❌ [OLT Details] Error fetching ONUs stats:', error);
             // Don't show error for stats, it's optional
         }
-    }, [oltId, processResponse]);
+    }, [oltId, authToken, processResponse]);
 
     // Load all data
     const loadData = useCallback(async () => {
@@ -176,6 +210,12 @@ const OLTDetailsScreen = () => {
         await fetchOltDetails();
         await fetchOnusStats();
     }, [obtenerDatosUsuario, fetchOltDetails, fetchOnusStats]);
+
+    // Handle manual refresh (force update from OLT)
+    const handleRefresh = useCallback(async () => {
+        await fetchOltDetails(true);
+        await fetchOnusStats();
+    }, [fetchOltDetails, fetchOnusStats]);
 
     // Initial load and focus refresh
     useFocusEffect(
@@ -196,20 +236,26 @@ const OLTDetailsScreen = () => {
 
     // Get status info for display
     const getStatusInfo = (status) => {
-        switch (status?.toLowerCase()) {
+        const statusStr = String(status || '').toLowerCase();
+        switch (statusStr) {
             case 'activa':
+            case 'online':
+            case 'active':
                 return {
                     badge: styles.statusActive,
                     text: styles.statusTextActive,
                     label: '🟢 Activa'
                 };
             case 'inactiva':
+            case 'offline':
+            case 'inactive':
                 return {
                     badge: styles.statusInactive,
                     text: styles.statusTextInactive,
                     label: '🔴 Inactiva'
                 };
             case 'mantenimiento':
+            case 'maintenance':
                 return {
                     badge: styles.statusMaintenance,
                     text: styles.statusTextMaintenance,
@@ -264,8 +310,8 @@ const OLTDetailsScreen = () => {
                     <View style={styles.oltMainInfo}>
                         <Text style={styles.oltIcon}>📡</Text>
                         <View style={styles.oltTitleContainer}>
-                            <Text style={styles.oltName}>{olt.nombre_olt || 'OLT Sin Nombre'}</Text>
-                            <Text style={styles.oltModel}>{olt.modelo || 'Modelo no especificado'}</Text>
+                            <Text style={styles.oltName}>{String(olt.nombre_olt || 'OLT Sin Nombre')}</Text>
+                            <Text style={styles.oltModel}>{String(olt.modelo || 'Modelo no especificado')}</Text>
                         </View>
                     </View>
                     <View style={[styles.statusBadge, statusInfo.badge]}>
@@ -276,23 +322,23 @@ const OLTDetailsScreen = () => {
                 <View style={styles.oltDetailsSection}>
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>IP de Gestión</Text>
-                        <Text style={styles.detailValue}>{olt.ip_olt || 'No asignada'}</Text>
+                        <Text style={styles.detailValue}>{String(olt.ip_olt || 'No asignada')}</Text>
                     </View>
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Ubicación</Text>
-                        <Text style={styles.detailValue}>{olt.ubicacion || 'No especificada'}</Text>
+                        <Text style={styles.detailValue}>{String(olt.ubicacion || 'No especificada')}</Text>
                     </View>
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Puerto de Gestión</Text>
-                        <Text style={styles.detailValue}>{olt.puerto_gestion || 'No configurado'}</Text>
+                        <Text style={styles.detailValue}>{String(olt.puerto_gestion || 'No configurado')}</Text>
                     </View>
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Protocolo</Text>
-                        <Text style={styles.detailValue}>{olt.protocolo_gestion || 'No especificado'}</Text>
+                        <Text style={styles.detailValue}>{String(olt.protocolo_gestion || 'No especificado')}</Text>
                     </View>
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Usuario</Text>
-                        <Text style={styles.detailValue}>{olt.olt_username || 'No configurado'}</Text>
+                        <Text style={styles.detailValue}>{String(olt.olt_username || 'No configurado')}</Text>
                     </View>
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Fecha Instalación</Text>
@@ -313,8 +359,8 @@ const OLTDetailsScreen = () => {
         if (!olt) return null;
 
         const ocupacion = parseFloat(olt.porcentaje_ocupacion || 0);
-        const capacidadTotal = parseInt(olt.capacidad_puertos || 0);
-        const puestosOcupados = parseInt(olt.puertos_ocupados || 0);
+        const capacidadTotal = parseInt(olt.capacidad_puertos || 0, 10);
+        const puestosOcupados = parseInt(olt.puertos_ocupados || 0, 10);
         const puestosDisponibles = capacidadTotal - puestosOcupados;
 
         return (
@@ -323,15 +369,15 @@ const OLTDetailsScreen = () => {
 
                 <View style={styles.statsGrid}>
                     <View style={styles.statItem}>
-                        <Text style={styles.statValue}>{capacidadTotal}</Text>
+                        <Text style={styles.statValue}>{String(capacidadTotal)}</Text>
                         <Text style={styles.statLabel}>Capacidad Total</Text>
                     </View>
                     <View style={styles.statItem}>
-                        <Text style={[styles.statValue, styles.statValueActive]}>{puestosOcupados}</Text>
+                        <Text style={[styles.statValue, styles.statValueActive]}>{String(puestosOcupados)}</Text>
                         <Text style={styles.statLabel}>Puertos Ocupados</Text>
                     </View>
                     <View style={styles.statItem}>
-                        <Text style={[styles.statValue, styles.statValueAvailable]}>{puestosDisponibles}</Text>
+                        <Text style={[styles.statValue, styles.statValueAvailable]}>{String(puestosDisponibles)}</Text>
                         <Text style={styles.statLabel}>Disponibles</Text>
                     </View>
                     <View style={styles.statItem}>
@@ -342,7 +388,7 @@ const OLTDetailsScreen = () => {
 
                 <View style={styles.progressContainer}>
                     <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, { width: `${ocupacion}%` }]} />
+                        <View style={[styles.progressFill, { width: `${Math.min(100, Math.max(0, ocupacion))}%` }]} />
                     </View>
                     <Text style={styles.progressText}>{ocupacion.toFixed(1)}% ocupado</Text>
                 </View>
@@ -364,8 +410,8 @@ const OLTDetailsScreen = () => {
                     >
                         <Text style={styles.onuButtonIcon}>📋</Text>
                         <Text style={styles.onuButtonText}>Todas las ONUs</Text>
-                        {onusStats?.total && (
-                            <Text style={styles.onuButtonCount}>{onusStats.total}</Text>
+                        {onusStats?.total != null && (
+                            <Text style={styles.onuButtonCount}>{String(onusStats.total)}</Text>
                         )}
                     </TouchableOpacity>
 
@@ -375,8 +421,8 @@ const OLTDetailsScreen = () => {
                     >
                         <Text style={styles.onuButtonIcon}>✅</Text>
                         <Text style={styles.onuButtonText}>Autorizadas</Text>
-                        {onusStats?.authorized && (
-                            <Text style={styles.onuButtonCount}>{onusStats.authorized}</Text>
+                        {onusStats?.authorized != null && (
+                            <Text style={styles.onuButtonCount}>{String(onusStats.authorized)}</Text>
                         )}
                     </TouchableOpacity>
 
@@ -386,8 +432,8 @@ const OLTDetailsScreen = () => {
                     >
                         <Text style={styles.onuButtonIcon}>⏳</Text>
                         <Text style={styles.onuButtonText}>En Espera</Text>
-                        {onusStats?.pending && (
-                            <Text style={styles.onuButtonCount}>{onusStats.pending}</Text>
+                        {onusStats?.pending != null && (
+                            <Text style={styles.onuButtonCount}>{String(onusStats.pending)}</Text>
                         )}
                     </TouchableOpacity>
 
@@ -397,8 +443,8 @@ const OLTDetailsScreen = () => {
                     >
                         <Text style={styles.onuButtonIcon}>🔴</Text>
                         <Text style={styles.onuButtonText}>Desconectadas</Text>
-                        {onusStats?.offline && (
-                            <Text style={styles.onuButtonCount}>{onusStats.offline}</Text>
+                        {onusStats?.offline != null && (
+                            <Text style={styles.onuButtonCount}>{String(onusStats.offline)}</Text>
                         )}
                     </TouchableOpacity>
                 </View>
@@ -421,11 +467,20 @@ const OLTDetailsScreen = () => {
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>Detalles de OLT</Text>
                             <Text style={styles.headerSubtitle}>
-                                {olt?.nombre_olt || 'Cargando...'}
+                                {String(olt?.nombre_olt || 'Cargando...')}
                             </Text>
                         </View>
                     </View>
                     <View style={styles.headerActions}>
+                        <TouchableOpacity
+                            style={styles.refreshButton}
+                            onPress={handleRefresh}
+                            disabled={isRefreshing}
+                        >
+                            <Text style={styles.refreshButtonText}>
+                                {isRefreshing ? '⟳' : '🔄'}
+                            </Text>
+                        </TouchableOpacity>
                         <ThemeSwitch />
                     </View>
                 </View>
@@ -453,6 +508,16 @@ const OLTDetailsScreen = () => {
                         <Text style={styles.lastUpdateText}>
                             Última actualización: {format(lastUpdate, 'dd/MM/yyyy HH:mm:ss')}
                         </Text>
+                        {isCached && (
+                            <Text style={styles.cacheIndicator}>
+                                📦 Datos en caché (actualiza en 60s)
+                            </Text>
+                        )}
+                        {!isCached && olt && (
+                            <Text style={styles.realtimeIndicator}>
+                                ⚡ Datos en tiempo real del OLT
+                            </Text>
+                        )}
                     </View>
                 )}
             </ScrollView>

@@ -38,6 +38,8 @@ import ConexionesReconexion from './src/pantallas/conexiones/ConexionesReconexio
 import ConexionesSuspendidas from './src/pantallas/conexiones/ConexionesSuspendidas';
 import ConexionDetalles from './src/pantallas/conexiones/detallesConexion/ConexionDetalles';
 import InstalacionForm from './src/pantallas/instalaciones/InstalacionForm';
+import InstalacionesListScreen from './src/pantallas/instalaciones/InstalacionesListScreen';
+import ConfiguracionesListScreen from './src/pantallas/configuraciones/ConfiguracionesListScreen';
 import ControlDevicesScreen from './src/pantallas/controles/ControlDevicesScreen';
 import RouterListScreen from './src/pantallas/controles/Routers/RouterListScreen';
 import AddRouterScreen from './src/pantallas/controles/Routers/AddRouterScreen';
@@ -45,6 +47,7 @@ import RouterDetailsScreen from './src/pantallas/controles/Routers/RouterDetails
 import OLTsListScreen from './src/pantallas/controles/OLTs/OLTsListScreen';
 import OLTDetailsScreen from './src/pantallas/controles/OLTs/OLTDetailsScreen';
 import ONUsListScreen from './src/pantallas/controles/OLTs/ONUsListScreen';
+import ONUDetailsScreen from './src/pantallas/controles/OLTs/ONUDetailsScreen';
 import InterfaceDetailsScreen from './src/pantallas/controles/Routers/InterfaceDetailsScreen';
 import AddVlanScreen from './src/pantallas/controles/Routers/AddVlanScreen';
 import AddIpAddressScreen from './src/pantallas/controles/Routers/AddIpAddressScreen';
@@ -100,6 +103,7 @@ import AgregarArticuloPantalla from './src/pantallas/factura/AgregarArticuloPant
 import TiposDeConexionScreen from './src/pantallas/conexiones/trabajos/TiposDeConexionScreen';
 import EditarFacturaPantalla from './src/pantallas/factura/EditarFacturaPantalla';
 import NuevaFacturaScreen from './src/pantallas/factura/NuevaFacturaScreen';
+import EventosFacturaScreen from './src/pantallas/factura/EventosFacturaScreen';
 import FacturasParaMiScreen from './src/pantallas/superAdmin/FacturasParaMiScreen';
 import AdminUserDetailScreen from './src/pantallas/superAdmin/AdminUserDetailScreen';
 import AssignmentsScreen from './src/pantallas/operaciones/ordenes_servicios/AssignmentsScreen'; 
@@ -315,6 +319,14 @@ const App = () => {
                 component={InstalacionForm}
                 options={{ headerShown: false }} />
               <Stack.Screen
+                name="InstalacionesListScreen"
+                component={InstalacionesListScreen}
+                options={{ headerShown: false }} />
+              <Stack.Screen
+                name="ConfiguracionesListScreen"
+                component={ConfiguracionesListScreen}
+                options={{ headerShown: false }} />
+              <Stack.Screen
                 name="ControlDevicesScreen"
                 component={ControlDevicesScreen}
                 options={{ headerShown: false }} />
@@ -333,6 +345,10 @@ const App = () => {
               <Stack.Screen
                 name="ONUsListScreen"
                 component={ONUsListScreen}
+                options={{ headerShown: false }} />
+              <Stack.Screen
+                name="ONUDetailsScreen"
+                component={ONUDetailsScreen}
                 options={{ headerShown: false }} />
               <Stack.Screen
                 name="AddRouterScreen"
@@ -521,6 +537,7 @@ const App = () => {
               <Stack.Screen name="ConfiguracionFijarIP" component={ConfiguracionFijarIP} options={{ headerShown: false }} />
               <Stack.Screen name="DetalleFacturaPantalla" component={DetalleFacturaPantalla} options={{ headerShown: false }} />
               <Stack.Screen name="FacturasScreen" component={FacturasScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="EventosFacturaScreen" component={EventosFacturaScreen} options={{ headerShown: false }} />
               <Stack.Screen name="BluetoothDevicesScreen" component={listAvailablePrinters} options={{ headerShown: false }} />
               <Stack.Screen name="AgregarArticuloPantalla" component={AgregarArticuloPantalla} options={{ headerShown: false }} />
               <Stack.Screen name="AdminUsersScreen" component={AdminUsersScreen} options={{ headerShown: false }} />

@@ -137,6 +137,20 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         color: colors.warning[600],
     },
 
+    refreshButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    refreshButtonText: {
+        fontSize: 20,
+        color: '#FFFFFF',
+    },
+
     // Filter buttons
     filtersContainer: {
         flexDirection: 'row',
@@ -430,5 +444,29 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         textAlign: 'center',
         lineHeight: 20,
         opacity: 0.8,
+    },
+
+    // Footer indicators
+    footerContainer: {
+        marginTop: 20,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: isDarkMode ? colors.gray[700] : colors.gray[200],
+        alignItems: 'center',
+        paddingBottom: 16,
+    },
+
+    cacheIndicator: {
+        fontSize: 11,
+        color: isDarkMode ? colors.warning[400] : colors.warning[600],
+        fontStyle: 'italic',
+        textAlign: 'center',
+    },
+
+    realtimeIndicator: {
+        fontSize: 11,
+        color: isDarkMode ? colors.success[400] : colors.success[600],
+        fontWeight: '600',
+        textAlign: 'center',
     },
 });

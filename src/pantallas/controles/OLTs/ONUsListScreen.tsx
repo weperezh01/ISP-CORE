@@ -13,36 +13,80 @@ const ONUsListScreen = () => {
     const { isDarkMode } = useTheme();
     const styles = getStyles(isDarkMode);
     const [isLoading, setIsLoading] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [onus, setOnus] = useState([]);
     const [filteredOnus, setFilteredOnus] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState(filter || 'all');
     const [onuStats, setOnuStats] = useState(null);
+    const [authToken, setAuthToken] = useState(null);
+    const [isCached, setIsCached] = useState(false);
 
+    // Get auth token from storage
     useEffect(() => {
-        fetchOnus();
+        const getAuthToken = async () => {
+            try {
+                const jsonValue = await AsyncStorage.getItem('@loginData');
+                if (jsonValue != null) {
+                    const userData = JSON.parse(jsonValue);
+                    setAuthToken(userData.token);
+                }
+            } catch (e) {
+                console.error('Error al leer el token del usuario', e);
+            }
+        };
+        getAuthToken();
     }, []);
 
-    const fetchOnus = async () => {
-        console.log('🔍 [ONUs] Iniciando fetchOnus para OLT:', oltId);
-        setIsLoading(true);
+    useEffect(() => {
+        if (authToken) {
+            fetchOnus();
+        }
+    }, [authToken]);
+
+    const fetchOnus = async (forceRefresh = false) => {
+        console.log('🔍 [ONUs] Iniciando fetchOnus para OLT:', oltId, 'Force refresh:', forceRefresh);
+
+        if (!authToken) {
+            console.log('⚠️ [ONUs] No auth token available yet');
+            return;
+        }
+
+        if (forceRefresh) {
+            setIsRefreshing(true);
+        } else {
+            setIsLoading(true);
+        }
+
         try {
-            const response = await fetch(`https://wellnet-rd.com:444/api/olts/${oltId}/onus`, {
+            // Use realtime endpoint
+            const response = await fetch(`https://wellnet-rd.com:444/api/olts/realtime/${oltId}/onus`, {
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                }
             });
 
             console.log('🔍 [ONUs] Response status:', response.status);
 
             if (response.ok) {
                 const data = await response.json();
-                console.log('✅ [ONUs] Respuesta recibida:', data);
+                console.log('✅ [ONUs] Realtime data received:', data);
 
-                // Handle different response structures
+                // Handle response structure from realtime API
                 let onusArray = [];
                 let statsData = null;
 
-                if (data && data.data) {
+                if (data && data.success && data.data) {
+                    if (data.data.onus && Array.isArray(data.data.onus)) {
+                        onusArray = data.data.onus;
+                    }
+                    if (data.data.estadisticas) {
+                        statsData = data.data.estadisticas;
+                    }
+                    setIsCached(data.cached || false);
+                } else if (data && data.data) {
                     if (data.data.onus && Array.isArray(data.data.onus)) {
                         onusArray = data.data.onus;
                     }
@@ -72,6 +116,7 @@ const ONUsListScreen = () => {
             Alert.alert('Error', 'No se pudieron cargar las ONUs de esta OLT');
         } finally {
             setIsLoading(false);
+            setIsRefreshing(false);
         }
     };
 
@@ -116,11 +161,18 @@ const ONUsListScreen = () => {
 
     useFocusEffect(
         useCallback(() => {
-            fetchOnus();
-            registrarNavegacion();
+            if (authToken) {
+                fetchOnus();
+                registrarNavegacion();
+            }
             return () => {};
-        }, [])
+        }, [authToken])
     );
+
+    // Handle manual refresh
+    const handleRefresh = useCallback(async () => {
+        await fetchOnus(true);
+    }, [authToken]);
 
     const applyFilter = (filterType, onusData = onus) => {
         setActiveFilter(filterType);
@@ -128,13 +180,22 @@ const ONUsListScreen = () => {
 
         switch (filterType) {
             case 'authorized':
-                filtered = filtered.filter(onu => onu.estado?.toLowerCase() === 'autorizada' || onu.estado?.toLowerCase() === 'online');
+                filtered = filtered.filter(onu => {
+                    const estado = String(onu?.estado || '').toLowerCase();
+                    return ['autorizada', 'online', 'active', 'authorized'].includes(estado);
+                });
                 break;
             case 'pending':
-                filtered = filtered.filter(onu => onu.estado?.toLowerCase() === 'pendiente' || onu.estado?.toLowerCase() === 'discovered');
+                filtered = filtered.filter(onu => {
+                    const estado = String(onu?.estado || '').toLowerCase();
+                    return ['pendiente', 'discovered', 'pending'].includes(estado);
+                });
                 break;
             case 'offline':
-                filtered = filtered.filter(onu => onu.estado?.toLowerCase() === 'offline' || onu.estado?.toLowerCase() === 'desconectada');
+                filtered = filtered.filter(onu => {
+                    const estado = String(onu?.estado || '').toLowerCase();
+                    return ['offline', 'desconectada', 'inactive'].includes(estado);
+                });
                 break;
             case 'all':
             default:
@@ -146,10 +207,10 @@ const ONUsListScreen = () => {
         if (searchQuery) {
             const formattedQuery = searchQuery.toLowerCase();
             filtered = filtered.filter(onu =>
-                onu.serial?.toLowerCase().includes(formattedQuery) ||
-                onu.descripcion?.toLowerCase().includes(formattedQuery) ||
-                onu.mac_address?.toLowerCase().includes(formattedQuery) ||
-                onu.id_onu?.toString().includes(formattedQuery)
+                String(onu?.serial || '').toLowerCase().includes(formattedQuery) ||
+                String(onu?.descripcion || '').toLowerCase().includes(formattedQuery) ||
+                String(onu?.mac_address || '').toLowerCase().includes(formattedQuery) ||
+                String(onu?.id_onu || '').toString().includes(formattedQuery)
             );
         }
 
@@ -162,10 +223,12 @@ const ONUsListScreen = () => {
     };
 
     const getOnuStatus = (onu) => {
-        const estado = onu.estado?.toLowerCase();
+        const estado = String(onu?.estado || '').toLowerCase();
         switch (estado) {
             case 'autorizada':
             case 'online':
+            case 'active':
+            case 'authorized':
                 return {
                     badge: styles.statusAuthorized,
                     text: styles.statusTextAuthorized,
@@ -173,6 +236,7 @@ const ONUsListScreen = () => {
                 };
             case 'pendiente':
             case 'discovered':
+            case 'pending':
                 return {
                     badge: styles.statusPending,
                     text: styles.statusTextPending,
@@ -180,6 +244,7 @@ const ONUsListScreen = () => {
                 };
             case 'offline':
             case 'desconectada':
+            case 'inactive':
                 return {
                     badge: styles.statusOffline,
                     text: styles.statusTextOffline,
@@ -194,19 +259,64 @@ const ONUsListScreen = () => {
         }
     };
 
+    const handleOpenOnu = (onuItem) => {
+        if (!onuItem) return;
+
+        const ontIdentifier = onuItem?.ont_id ?? onuItem?.ontId ?? onuItem?.ont;
+
+        console.log('🔍 [ONUs List] Opening ONU with data:', {
+            id_onu: onuItem?.id_onu,
+            serial: onuItem?.serial,
+            puerto: onuItem?.puerto,
+            ont_id: ontIdentifier,
+            full_item: onuItem
+        });
+
+        navigation.navigate('ONUDetailsScreen', {
+            onuId: onuItem?.id_onu || onuItem?.serial || 'onu',
+            oltId,
+            id_usuario,
+            puerto: onuItem?.puerto || null,
+            slot: onuItem?.slot || null,
+            ontId: ontIdentifier ?? null,
+            ont_id: ontIdentifier ?? null,  // Agregado para compatibilidad
+            onuPreview: {
+                id_onu: onuItem?.id_onu,
+                serial: onuItem?.serial,
+                descripcion: onuItem?.descripcion,
+                mac_address: onuItem?.mac_address,
+                modelo: onuItem?.modelo,
+                estado: onuItem?.estado,
+                puerto: onuItem?.puerto,
+                slot: onuItem?.slot,
+                distancia: onuItem?.distancia,
+                potencia_rx: onuItem?.potencia_rx,
+                potencia_tx: onuItem?.potencia_tx,
+                ultima_conexion: onuItem?.ultima_conexion,
+                cliente_nombre: onuItem?.cliente_nombre,
+                cliente_direccion: onuItem?.cliente_direccion,
+                cliente_telefono: onuItem?.cliente_telefono,
+                plan_servicio: onuItem?.plan_servicio,
+                estado_pago: onuItem?.estado_pago,
+                potencia: onuItem?.potencia,
+                ont_id: ontIdentifier ?? null,
+            }
+        });
+    };
+
     const renderOnuCard = ({ item }) => {
         const statusInfo = getOnuStatus(item);
 
         return (
             <TouchableOpacity
                 style={styles.onuCard}
-                onPress={() => navigation.navigate('ONUDetailsScreen', { onuId: item.id_onu, oltId, id_usuario })}
+                onPress={() => handleOpenOnu(item)}
                 activeOpacity={0.8}
             >
                 <View style={styles.onuHeader}>
                     <View style={styles.onuInfo}>
-                        <Text style={styles.onuSerial}>{item.serial || `ONU ${item.id_onu}`}</Text>
-                        <Text style={styles.onuDescription}>{item.descripcion || 'Sin descripción'}</Text>
+                        <Text style={styles.onuSerial}>{String(item.serial || `ONU ${item.id_onu || ''}`)}</Text>
+                        <Text style={styles.onuDescription}>{String(item.descripcion || 'Sin descripción')}</Text>
                     </View>
                     <View style={[styles.onuStatusBadge, statusInfo.badge]}>
                         <Text style={statusInfo.text}>{statusInfo.label}</Text>
@@ -216,7 +326,7 @@ const ONUsListScreen = () => {
                 <View style={styles.onuDetails}>
                     <View style={styles.onuDetailRow}>
                         <Text style={styles.onuDetailLabel}>MAC Address</Text>
-                        <Text style={styles.onuDetailValue}>{item.mac_address || 'No registrada'}</Text>
+                        <Text style={styles.onuDetailValue}>{String(item.mac_address || 'No registrada')}</Text>
                     </View>
                     <View style={styles.onuDetailRow}>
                         <Text style={styles.onuDetailLabel}>Puerto/Slot</Text>
@@ -234,9 +344,9 @@ const ONUsListScreen = () => {
 
                 {item.distancia && (
                     <View style={styles.onuMetrics}>
-                        <Text style={styles.onuMetricsLabel}>📏 Distancia: {item.distancia}m</Text>
+                        <Text style={styles.onuMetricsLabel}>📏 Distancia: {String(item.distancia)}m</Text>
                         {item.potencia_rx && (
-                            <Text style={styles.onuMetricsLabel}>📶 Señal: {item.potencia_rx} dBm</Text>
+                            <Text style={styles.onuMetricsLabel}>📶 Señal: {String(item.potencia_rx)} dBm</Text>
                         )}
                     </View>
                 )}
@@ -271,7 +381,7 @@ const ONUsListScreen = () => {
                             {filterOption.label}
                         </Text>
                         <View style={styles.filterCount}>
-                            <Text style={styles.filterCountText}>{filterOption.count}</Text>
+                            <Text style={styles.filterCountText}>{String(filterOption.count)}</Text>
                         </View>
                     </TouchableOpacity>
                 ))}
@@ -331,7 +441,7 @@ const ONUsListScreen = () => {
                             <Text style={styles.backButtonText}>← Volver</Text>
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>ONUs - {oltName}</Text>
+                            <Text style={styles.headerTitle}>ONUs - {String(oltName || 'OLT')}</Text>
                             <Text style={styles.headerSubtitle}>
                                 {filteredOnus.length} de {onus.length} ONUs
                                 {activeFilter !== 'all' && ` (${activeFilter})`}
@@ -340,8 +450,17 @@ const ONUsListScreen = () => {
                     </View>
                     <View style={styles.headerActions}>
                         <View style={styles.totalBadge}>
-                            <Text style={styles.totalBadgeText}>{onus.length}</Text>
+                            <Text style={styles.totalBadgeText}>{String(onus.length)}</Text>
                         </View>
+                        <TouchableOpacity
+                            style={styles.refreshButton}
+                            onPress={handleRefresh}
+                            disabled={isRefreshing}
+                        >
+                            <Text style={styles.refreshButtonText}>
+                                {isRefreshing ? '⟳' : '🔄'}
+                            </Text>
+                        </TouchableOpacity>
                         <ThemeSwitch />
                     </View>
                 </View>
@@ -378,6 +497,20 @@ const ONUsListScreen = () => {
                         renderItem={renderOnuCard}
                         contentContainerStyle={styles.onuList}
                         showsVerticalScrollIndicator={false}
+                        ListFooterComponent={
+                            <View style={styles.footerContainer}>
+                                {isCached && (
+                                    <Text style={styles.cacheIndicator}>
+                                        📦 Datos en caché (actualiza en 60s)
+                                    </Text>
+                                )}
+                                {!isCached && onus.length > 0 && (
+                                    <Text style={styles.realtimeIndicator}>
+                                        ⚡ Datos en tiempo real del OLT
+                                    </Text>
+                                )}
+                            </View>
+                        }
                     />
                 )}
             </View>
