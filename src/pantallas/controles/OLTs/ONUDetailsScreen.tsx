@@ -409,29 +409,45 @@ const ONUDetailsScreen = () => {
                             const zonaId = authFormValues.zona!.replace(/^[A-Z]+/i, '');
 
                             const payloadRaw = {
+                                // Identificación
+                                sn: serial,
+                                onu_external_id: serial,
+
+                                // Puerto PON
                                 puerto: puerto,
+                                board: parseInt(authFormValues.board!),
+                                port: parseInt(authFormValues.port!),
                                 ont_id: 0,
-                                pon_type: 'GPON',
-                                gpon_channel: 'GPON',
+
+                                // Tipo y Modo
                                 onu_type: authFormValues.onu_type!,
                                 onu_mode: 'Routing',
+                                pon_type: 'GPON',
+                                gpon_channel: 'GPON',
+
+                                // VLAN
                                 user_vlan_id: parseInt(authFormValues.user_vlan_id!),
+
+                                // Velocidades
                                 download_speed: authFormValues.download_speed!,
                                 upload_speed: authFormValues.upload_speed!,
                                 download_mbps: downloadMbps,
                                 upload_mbps: uploadMbps,
+
+                                // Ubicación
                                 zona: zonaId,
+                                zona_nombre: zonaNombre,
                                 name: authFormValues.name!,
-                                board: parseInt(authFormValues.board!),
-                                port: parseInt(authFormValues.port!),
+                                address_comment: authFormValues.address_comment || undefined,
+
+                                // ODB (Splitter)
                                 odb_splitter: authFormValues.odb_splitter || undefined,
                                 odb_port: authFormValues.odb_port || undefined,
-                                address_comment: authFormValues.address_comment || undefined,
+
+                                // GPS (opcional)
                                 use_gps: authFormValues.use_gps || false,
                                 gps_latitude: authFormValues.gps_latitude || undefined,
                                 gps_longitude: authFormValues.gps_longitude || undefined,
-                                sn: serial,
-                                onu_external_id: serial,
                             };
 
                             const payload = Object.fromEntries(
