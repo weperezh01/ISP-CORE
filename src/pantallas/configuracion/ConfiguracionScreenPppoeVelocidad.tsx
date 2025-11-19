@@ -177,6 +177,41 @@ const ConfiguracionScreenPppoeVelocidad = ({ route }) => {
 
                             const data = await response.json();
                             if (response.ok) {
+                                console.log('Respuesta del servidor:', data);
+
+                                // Registrar el evento de configuración exitosa
+                                try {
+                                    const eventData = {
+                                        id_conexion: connectionId,
+                                        tipo_evento: 'Configuración de router',
+                                        mensaje: `Router configurado: ${router?.nombre_router || 'Router'}`,
+                                        id_usuario: idUsuario,
+                                        nota: `Configuración completada. IP: ${ipSeleccionada}, Red: ${redSeleccionada}, Subida: ${config.limite_subida}${config.unidad_subida.charAt(0)}, Bajada: ${config.limite_bajada}${config.unidad_bajada.charAt(0)}`
+                                    };
+
+                                    console.log('📝 Registrando evento de configuración:', eventData);
+
+                                    const eventoResponse = await fetch('https://wellnet-rd.com:444/api/log-cortes/registrar', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify(eventData),
+                                    });
+
+                                    const eventoData = await eventoResponse.json();
+                                    console.log('📥 Respuesta del registro de evento:', eventoData);
+
+                                    if (eventoResponse.ok) {
+                                        console.log('✅ Evento de configuración registrado exitosamente - ID:', eventoData.id_log);
+                                    } else {
+                                        console.error('❌ Error al registrar evento:', eventoData);
+                                    }
+                                } catch (error) {
+                                    console.error('❌ Error al registrar el evento de configuración:', error);
+                                    // No mostramos error al usuario para no interrumpir el flujo
+                                }
+
                                 Alert.alert('Configuración guardada', data.message, [
                                     {
                                         text: 'OK',

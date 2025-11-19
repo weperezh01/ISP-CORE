@@ -150,7 +150,7 @@ const SelectorIp = ({ label, placeholder, data, selectedValue, onValueChange, is
               
               return (
                 <TouchableOpacity
-                  key={item.direccion_ip.toString()}
+                  key={`${item.direccion_ip}-${index}`}
                   style={[
                     styles.ipItem,
                     isSelected && styles.selectedIp,

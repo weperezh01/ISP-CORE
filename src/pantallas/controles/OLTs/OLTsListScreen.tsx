@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, View, Text, TouchableOpacity, FlatList, ActivityIndicator, TextInput, ScrollView } from 'react-native';
+import { Alert, View, Text, TouchableOpacity, FlatList, ActivityIndicator, TextInput, ScrollView, Image } from 'react-native';
 import { useTheme } from '../../../../ThemeContext';
 import { getStyles } from './OLTsListScreenStyles';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -201,8 +201,23 @@ const OLTsListScreen = ({ route }) => {
         }
     };
 
+    const getOltImage = (olt) => {
+        const model = (olt?.modelo || olt?.nombre_olt || '').toLowerCase();
+
+        if (model.includes('zte') || model.includes('c320')) {
+            return require('../../../images/OLTs/ZTE-C320.png');
+        }
+
+        if (model.includes('huawei') || model.includes('ma5800') || model.includes('olt huawei')) {
+            return require('../../../images/OLTs/Huawei-MA5800-X15.png');
+        }
+
+        return null;
+    };
+
     const renderOltCard = ({ item }) => {
         const statusInfo = getOltStatus(item);
+        const imageSource = getOltImage(item);
 
         return (
             <TouchableOpacity
@@ -211,7 +226,11 @@ const OLTsListScreen = ({ route }) => {
                 activeOpacity={0.8}
             >
                 <View style={styles.oltHeader}>
-                    <Text style={styles.oltIcon}>📡</Text>
+                    {imageSource ? (
+                        <Image source={imageSource} style={styles.oltImage} resizeMode="contain" />
+                    ) : (
+                        <Text style={styles.oltIcon}>📡</Text>
+                    )}
                     <View style={styles.oltInfo}>
                         <Text style={styles.oltName}>{item.nombre_olt || 'OLT Sin Nombre'}</Text>
                         <Text style={styles.oltSubtitle}>ID: {item.id_olt}</Text>

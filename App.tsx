@@ -45,9 +45,13 @@ import RouterListScreen from './src/pantallas/controles/Routers/RouterListScreen
 import AddRouterScreen from './src/pantallas/controles/Routers/AddRouterScreen';
 import RouterDetailsScreen from './src/pantallas/controles/Routers/RouterDetailsScreen';
 import OLTsListScreen from './src/pantallas/controles/OLTs/OLTsListScreen';
-import OLTDetailsScreen from './src/pantallas/controles/OLTs/OLTDetailsScreen';
-import ONUsListScreen from './src/pantallas/controles/OLTs/ONUsListScreen';
+      import OLTDetailsScreen from './src/pantallas/controles/OLTs/OLTDetailsScreen';
+      import OLTDashboardScreen from './src/pantallas/controles/OLTs/OLTDashboardScreen';
+      import ONUsListScreen from './src/pantallas/controles/OLTs/ONUsListScreen';
+      import AutorizarONUScreen from './src/pantallas/controles/OLTs/AutorizarONUScreen';
 import ONUDetailsScreen from './src/pantallas/controles/OLTs/ONUDetailsScreen';
+import OLTCardsScreen from './src/pantallas/controles/OLTs/OLTCardsScreen';
+import TR069StatsScreen from './src/pantallas/controles/OLTs/TR069StatsScreen';
 import InterfaceDetailsScreen from './src/pantallas/controles/Routers/InterfaceDetailsScreen';
 import AddVlanScreen from './src/pantallas/controles/Routers/AddVlanScreen';
 import AddIpAddressScreen from './src/pantallas/controles/Routers/AddIpAddressScreen';
@@ -343,13 +347,29 @@ const App = () => {
                 component={OLTDetailsScreen}
                 options={{ headerShown: false }} />
               <Stack.Screen
-                name="ONUsListScreen"
-                component={ONUsListScreen}
+                name="OLTCards"
+                component={OLTCardsScreen}
                 options={{ headerShown: false }} />
               <Stack.Screen
-                name="ONUDetailsScreen"
-                component={ONUDetailsScreen}
+                name="OLTDashboardScreen"
+                component={OLTDashboardScreen}
                 options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="ONUsListScreen"
+                  component={ONUsListScreen}
+                  options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="AutorizarONUScreen"
+                  component={AutorizarONUScreen}
+                  options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="ONUDetailsScreen"
+                  component={ONUDetailsScreen}
+                  options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="TR069StatsScreen"
+                  component={TR069StatsScreen}
+                  options={{ headerShown: false }} />
               <Stack.Screen
                 name="AddRouterScreen"
                 component={AddRouterScreen}

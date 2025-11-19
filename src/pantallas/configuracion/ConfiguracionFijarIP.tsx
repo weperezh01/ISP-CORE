@@ -263,8 +263,43 @@ const ConfiguracionFijarIP = ({ route }) => {
                             const data = await response.json();
 
                             if (response.ok) {
-                                Alert.alert('Éxito', 'La selección fue enviada al servidor correctamente.');
                                 console.log('Respuesta del servidor:', data);
+
+                                // Registrar el evento de configuración exitosa
+                                try {
+                                    const eventData = {
+                                        id_conexion: connectionId,
+                                        tipo_evento: 'Configuración de router',
+                                        mensaje: `Router configurado: ${router.nombre}`,
+                                        id_usuario: idUsuario,
+                                        nota: `Configuración completada. IP: ${selectedLease['active-address']}, MAC: ${selectedLease['mac-address']}, Subida: ${uploadSpeed}${simplificarUnidad(uploadUnit)}, Bajada: ${downloadSpeed}${simplificarUnidad(downloadUnit)}`
+                                    };
+
+                                    console.log('📝 Registrando evento de configuración:', eventData);
+
+                                    const eventoResponse = await fetch('https://wellnet-rd.com:444/api/log-cortes/registrar', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify(eventData),
+                                    });
+
+                                    const eventoData = await eventoResponse.json();
+                                    console.log('📥 Respuesta del registro de evento:', eventoData);
+
+                                    if (eventoResponse.ok) {
+                                        console.log('✅ Evento de configuración registrado exitosamente - ID:', eventoData.id_log);
+                                    } else {
+                                        console.error('❌ Error al registrar evento:', eventoData);
+                                        console.warn('⚠️ No se pudo registrar el evento de configuración');
+                                    }
+                                } catch (error) {
+                                    console.error('❌ Error al registrar el evento de configuración:', error);
+                                    // No mostramos error al usuario para no interrumpir el flujo
+                                }
+
+                                Alert.alert('Éxito', 'La configuración se guardó correctamente.');
 
                                 // Navegar a la pantalla ConexionDetalles
                                 navigation.navigate('ConexionDetalles', {

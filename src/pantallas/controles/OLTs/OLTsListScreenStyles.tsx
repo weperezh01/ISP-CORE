@@ -94,6 +94,14 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         color: '#FFFFFF',
     },
 
+    oltImage: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: isDarkMode ? colors.gray[800] : colors.gray[100],
+        marginRight: 12,
+    },
+
     headerTitleContainer: {
         flex: 1,
     },

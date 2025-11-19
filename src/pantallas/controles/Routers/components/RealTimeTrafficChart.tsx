@@ -43,11 +43,11 @@ const RealTimeTrafficChart: React.FC<RealTimeTrafficChartProps> = ({
                 rx_rate: trafficData.download_bps || 0   // RX (Bajada)
             };
 
-            console.log('📊 RealTimeChart: Adding new data point:', {
-                time: formatTimeString(now),
-                tx_rate: trafficData.upload_bps,    // TX (Subida)
-                rx_rate: trafficData.download_bps   // RX (Bajada)
-            });
+            // console.log('📊 RealTimeChart: Adding new data point:', {
+            //     time: formatTimeString(now),
+            //     tx_rate: trafficData.upload_bps,    // TX (Subida)
+            //     rx_rate: trafficData.download_bps   // RX (Bajada)
+            // });
 
             setDataPoints(prevPoints => {
                 const updatedPoints = [...prevPoints, newPoint];
@@ -212,15 +212,15 @@ const RealTimeTrafficChart: React.FC<RealTimeTrafficChartProps> = ({
     const hasData = dataPoints.length > 0 && chartData.datasets.length > 0;
 
     // Debug logging
-    useEffect(() => {
-        if (chartData.customLabelData.length > 0) {
-            console.log('📅 RealTimeChart: Custom label data:', chartData.customLabelData.map((timestamp, index) => ({
-                index,
-                timestamp: timestamp ? formatTimeString(timestamp) : 'null',
-                actualTime: timestamp ? timestamp.toLocaleString() : 'null'
-            })));
-        }
-    }, [chartData.customLabelData]);
+    // useEffect(() => {
+    //     if (chartData.customLabelData.length > 0) {
+    //         console.log('📅 RealTimeChart: Custom label data:', chartData.customLabelData.map((timestamp, index) => ({
+    //             index,
+    //             timestamp: timestamp ? formatTimeString(timestamp) : 'null',
+    //             actualTime: timestamp ? timestamp.toLocaleString() : 'null'
+    //         })));
+    //     }
+    // }, [chartData.customLabelData]);
 
     const chartConfig = {
         backgroundColor: isDarkMode ? '#1F1F1F' : '#FFFFFF',
@@ -436,8 +436,8 @@ const RealTimeTrafficChart: React.FC<RealTimeTrafficChartProps> = ({
                                                 : chartData.chartWidth / 2; // Center single point
                                             
                                             const timeData = formatTime(timestamp);
-                                            console.log(`🕒 Label ${dataIndex}:`, timeData.time, timeData.period, `position: ${Number.isFinite(position) ? position.toFixed(1) : 'NaN'}px`);
-                                            
+                                            // console.log(`🕒 Label ${dataIndex}:`, timeData.time, timeData.period, `position: ${Number.isFinite(position) ? position.toFixed(1) : 'NaN'}px`);
+
                                             return (
                                                 <View key={dataIndex} style={[
                                                     styles.customTimeLabel, 

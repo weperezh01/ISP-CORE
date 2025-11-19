@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Alert, Image } from 'react-native';
 import { useTheme } from '../../../../ThemeContext';
 import { getStyles } from './OLTDetailsScreenStyles';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -24,6 +24,25 @@ const OLTDetailsScreen = () => {
     const [usuarioId, setUsuarioId] = useState(id_usuario || null);
     const [authToken, setAuthToken] = useState(null);
     const [isCached, setIsCached] = useState(false);
+
+    // State for sensitive data visibility
+    const [showPassword, setShowPassword] = useState(false);
+    const [showSnmpRead, setShowSnmpRead] = useState(false);
+    const [showSnmpWrite, setShowSnmpWrite] = useState(false);
+
+    const getOltImage = (oltData) => {
+        const model = (oltData?.modelo || oltData?.nombre_olt || '').toLowerCase();
+
+        if (model.includes('zte') || model.includes('c320')) {
+            return require('../../../images/OLTs/ZTE-C320.png');
+        }
+
+        if (model.includes('huawei') || model.includes('ma5800') || model.includes('olt huawei')) {
+            return require('../../../images/OLTs/Huawei-MA5800-X15.png');
+        }
+
+        return null;
+    };
 
     // Helper function to process API responses
     const processResponse = useCallback(async (response, context) => {
@@ -120,8 +139,10 @@ const OLTDetailsScreen = () => {
             }
             setError(null);
 
-            // Use realtime endpoint
-            const response = await fetch(`https://wellnet-rd.com:444/api/olts/realtime/detalles/${oltId}`, {
+            // ✅ FIX: Agregar parámetro force para bypass del caché del backend
+            const url = `https://wellnet-rd.com:444/api/olts/realtime/detalles/${oltId}${forceRefresh ? '?force=true' : ''}`;
+
+            const response = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -162,7 +183,7 @@ const OLTDetailsScreen = () => {
     }, [oltId, authToken, processResponse, registrarNavegacion]);
 
     // Fetch ONUs statistics (realtime)
-    const fetchOnusStats = useCallback(async () => {
+    const fetchOnusStats = useCallback(async (forceRefresh = false) => {
         if (!oltId) return;
 
         if (!authToken) {
@@ -171,8 +192,10 @@ const OLTDetailsScreen = () => {
         }
 
         try {
-            // Use realtime endpoint
-            const response = await fetch(`https://wellnet-rd.com:444/api/olts/realtime/${oltId}/onus/estadisticas`, {
+            // ✅ FIX: Agregar parámetro force para bypass del caché
+            const url = `https://wellnet-rd.com:444/api/olts/realtime/${oltId}/onus/estadisticas${forceRefresh ? '?force=true' : ''}`;
+
+            const response = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -204,23 +227,33 @@ const OLTDetailsScreen = () => {
         }
     }, [oltId, authToken, processResponse]);
 
-    // Load all data
-    const loadData = useCallback(async () => {
+    // Load all data (optimized with parallel loading)
+    const loadData = useCallback(async (forceRefresh = false) => {
         await obtenerDatosUsuario();
-        await fetchOltDetails();
-        await fetchOnusStats();
+
+        // ✅ FIX: Ejecutar ambas llamadas en PARALELO en lugar de secuencial
+        // Pasar forceRefresh a AMBAS llamadas para asegurar datos frescos
+        await Promise.all([
+            fetchOltDetails(forceRefresh),
+            fetchOnusStats(forceRefresh)
+        ]);
     }, [obtenerDatosUsuario, fetchOltDetails, fetchOnusStats]);
 
     // Handle manual refresh (force update from OLT)
     const handleRefresh = useCallback(async () => {
-        await fetchOltDetails(true);
-        await fetchOnusStats();
+        // ✅ FIX: Forzar refresh real del OLT, no usar caché
+        await Promise.all([
+            fetchOltDetails(true),
+            fetchOnusStats(true)
+        ]);
     }, [fetchOltDetails, fetchOnusStats]);
 
     // Initial load and focus refresh
     useFocusEffect(
         useCallback(() => {
-            loadData();
+            // ✅ FIX: Forzar refresh en cada foco para obtener datos actualizados
+            // Esto asegura que después de autorizar una ONU, los contadores se actualicen
+            loadData(true);
         }, [loadData])
     );
 
@@ -303,12 +336,17 @@ const OLTDetailsScreen = () => {
         if (!olt) return null;
 
         const statusInfo = getStatusInfo(olt.estado);
+        const imageSource = getOltImage(olt);
 
         return (
             <View style={styles.oltCard}>
                 <View style={styles.oltHeader}>
                     <View style={styles.oltMainInfo}>
-                        <Text style={styles.oltIcon}>📡</Text>
+                        {imageSource ? (
+                            <Image source={imageSource} style={styles.oltImage} resizeMode="contain" />
+                        ) : (
+                            <Text style={styles.oltIcon}>📡</Text>
+                        )}
                         <View style={styles.oltTitleContainer}>
                             <Text style={styles.oltName}>{String(olt.nombre_olt || 'OLT Sin Nombre')}</Text>
                             <Text style={styles.oltModel}>{String(olt.modelo || 'Modelo no especificado')}</Text>
@@ -354,99 +392,384 @@ const OLTDetailsScreen = () => {
         );
     };
 
-    // Render capacity stats
-    const renderCapacityStats = () => {
+    // Render OLT detailed settings
+    const renderOltSettings = () => {
         if (!olt) return null;
 
-        const ocupacion = parseFloat(olt.porcentaje_ocupacion || 0);
-        const capacidadTotal = parseInt(olt.capacidad_puertos || 0, 10);
-        const puestosOcupados = parseInt(olt.puertos_ocupados || 0, 10);
-        const puestosDisponibles = capacidadTotal - puestosOcupados;
+        const maskValue = (value) => {
+            if (!value) return '**********';
+            return '**********';
+        };
+
+        const settings = [
+            { label: 'Name', value: olt.nombre_olt || 'N/A', sensitive: false },
+            { label: 'OLT IP', value: olt.ip_olt || 'N/A', sensitive: false },
+            { label: 'Reachable via VPN tunnel', value: olt.vpn_tunnel || 'no', sensitive: false },
+            { label: 'Telnet TCP port', value: String(olt.puerto_telnet || olt.puerto_gestion || '23'), sensitive: false },
+            { label: 'OLT telnet username', value: olt.olt_username || 'N/A', sensitive: true, showState: showPassword, setShowState: setShowPassword },
+            { label: 'OLT telnet password', value: olt.olt_password || 'N/A', sensitive: true, showState: showPassword, setShowState: setShowPassword },
+            { label: 'SNMP read-only community', value: olt.snmp_community_read || olt.snmp_community || 'N/A', sensitive: true, showState: showSnmpRead, setShowState: setShowSnmpRead },
+            { label: 'SNMP read-write community', value: olt.snmp_community_write || 'N/A', sensitive: true, showState: showSnmpWrite, setShowState: setShowSnmpWrite },
+            { label: 'SNMP UDP port', value: String(olt.snmp_port || '161'), sensitive: false },
+            { label: 'IPTV module', value: olt.iptv_enabled ? 'enabled' : 'disabled', sensitive: false },
+            { label: 'OLT hardware version', value: olt.hardware_version || olt.modelo || 'N/A', sensitive: false },
+            { label: 'OLT software version', value: olt.software_version || 'N/A', sensitive: false },
+            { label: 'Supported PON types', value: olt.pon_types || 'GPON', sensitive: false },
+            { label: 'TR069 Profile', value: olt.tr069_profile || '', sensitive: false },
+        ];
+
+        const actionButtons = [
+            {
+                id: 'edit',
+                icon: '✏️',
+                label: 'Editar Configuración',
+                onPress: () => {
+                    Alert.alert(
+                        'Editar Configuración OLT',
+                        `Editar configuración de: ${olt.nombre_olt}`,
+                        [
+                            { text: 'Cancelar', style: 'cancel' },
+                            {
+                                text: 'Editar',
+                                onPress: () => {
+                                    // TODO: Navegar a pantalla de edición
+                                    console.log('Navegando a editar OLT');
+                                }
+                            }
+                        ]
+                    );
+                },
+                style: 'primary'
+            },
+            {
+                id: 'history',
+                icon: '📜',
+                label: 'Historial',
+                onPress: () => {
+                    Alert.alert(
+                        'Ver Historial',
+                        `Historial de cambios de: ${olt.nombre_olt}`,
+                        [
+                            { text: 'Cancelar', style: 'cancel' },
+                            {
+                                text: 'Ver',
+                                onPress: () => {
+                                    // TODO: Navegar a pantalla de historial
+                                    console.log('Navegando a historial OLT');
+                                }
+                            }
+                        ]
+                    );
+                },
+                style: 'secondary'
+            },
+            {
+                id: 'cli',
+                icon: '>_',
+                label: 'CLI',
+                onPress: () => {
+                    Alert.alert(
+                        'Interfaz de Línea de Comandos',
+                        `Acceder a CLI de: ${olt.nombre_olt}\n\nIP: ${olt.ip_olt}`,
+                        [
+                            { text: 'Cancelar', style: 'cancel' },
+                            {
+                                text: 'Conectar',
+                                onPress: () => {
+                                    // TODO: Navegar a pantalla de CLI
+                                    console.log('Abriendo CLI para OLT');
+                                }
+                            }
+                        ]
+                    );
+                },
+                style: 'secondary'
+            },
+            {
+                id: 'backups',
+                icon: '💾',
+                label: 'Respaldos',
+                onPress: () => {
+                    Alert.alert(
+                        'Respaldos de Configuración',
+                        `Gestionar respaldos de configuración de: ${olt.nombre_olt}`,
+                        [
+                            { text: 'Cancelar', style: 'cancel' },
+                            {
+                                text: 'Ver Respaldos',
+                                onPress: () => {
+                                    // TODO: Navegar a pantalla de backups
+                                    console.log('Navegando a config backups');
+                                }
+                            }
+                        ]
+                    );
+                },
+                style: 'secondary'
+            }
+        ];
 
         return (
-            <View style={styles.statsCard}>
-                <Text style={styles.statsTitle}>📊 Estadísticas de Puertos</Text>
+            <View style={styles.settingsCard}>
+                <View style={styles.settingsHeader}>
+                    <Text style={styles.sectionTitle}>⚙️ OLT Settings</Text>
 
-                <View style={styles.statsGrid}>
-                    <View style={styles.statItem}>
-                        <Text style={styles.statValue}>{String(capacidadTotal)}</Text>
-                        <Text style={styles.statLabel}>Capacidad Total</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                        <Text style={[styles.statValue, styles.statValueActive]}>{String(puestosOcupados)}</Text>
-                        <Text style={styles.statLabel}>Puertos Ocupados</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                        <Text style={[styles.statValue, styles.statValueAvailable]}>{String(puestosDisponibles)}</Text>
-                        <Text style={styles.statLabel}>Disponibles</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                        <Text style={[styles.statValue, styles.statValuePercentage]}>{ocupacion.toFixed(1)}%</Text>
-                        <Text style={styles.statLabel}>Ocupación</Text>
+                    {/* Action Buttons */}
+                    <View style={styles.settingsActions}>
+                        {actionButtons.map((button) => (
+                            <TouchableOpacity
+                                key={button.id}
+                                style={[
+                                    styles.settingsActionButton,
+                                    button.style === 'primary' && styles.settingsActionButtonPrimary
+                                ]}
+                                onPress={button.onPress}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.settingsActionIcon}>{button.icon}</Text>
+                                <Text style={[
+                                    styles.settingsActionText,
+                                    button.style === 'primary' && styles.settingsActionTextPrimary
+                                ]}>
+                                    {button.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
                     </View>
                 </View>
 
-                <View style={styles.progressContainer}>
-                    <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, { width: `${Math.min(100, Math.max(0, ocupacion))}%` }]} />
-                    </View>
-                    <Text style={styles.progressText}>{ocupacion.toFixed(1)}% ocupado</Text>
+                <View style={styles.settingsTable}>
+                    {settings.map((setting, index) => (
+                        <View
+                            key={index}
+                            style={[
+                                styles.settingRow,
+                                index % 2 === 0 && styles.settingRowEven
+                            ]}
+                        >
+                            <Text style={styles.settingLabel}>{setting.label}</Text>
+                            <View style={styles.settingValueContainer}>
+                                {setting.sensitive ? (
+                                    <>
+                                        <Text style={styles.settingValue}>
+                                            {setting.showState ? setting.value : maskValue(setting.value)}
+                                        </Text>
+                                        <TouchableOpacity
+                                            style={styles.toggleButton}
+                                            onPress={() => setting.setShowState(!setting.showState)}
+                                        >
+                                            <Text style={styles.toggleButtonText}>
+                                                {setting.showState ? '👁️' : '👁️‍🗨️'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </>
+                                ) : (
+                                    <Text style={styles.settingValue}>{setting.value}</Text>
+                                )}
+                            </View>
+                        </View>
+                    ))}
+                </View>
+
+                {/* TR069 Profile Management Link */}
+                <TouchableOpacity
+                    style={styles.tr069Link}
+                    onPress={() => {
+                        Alert.alert(
+                            'Manage TR069 Profiles',
+                            `Configurar perfiles TR069 para OLT: ${olt.nombre_olt}`,
+                            [
+                                { text: 'Cancelar', style: 'cancel' },
+                                {
+                                    text: 'Ir',
+                                    onPress: () => {
+                                        // TODO: Navegar a pantalla de TR069 profiles
+                                        console.log('Navegando a TR069 Profiles');
+                                    }
+                                }
+                            ]
+                        );
+                    }}
+                    activeOpacity={0.7}
+                >
+                    <Text style={styles.tr069LinkIcon}>🔧</Text>
+                    <Text style={styles.tr069LinkText}>Manage TR069 profiles</Text>
+                    <Text style={styles.tr069LinkArrow}>→</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    };
+
+    // Render ONUs statistics cards
+    const renderOnuStatistics = () => {
+        if (!onusStats) return null;
+
+        return (
+            <View style={styles.onuStatsContainer}>
+                <Text style={styles.sectionTitle}>📊 Estado de ONUs</Text>
+
+                <View style={styles.statsCardsGrid}>
+                    {/* Tarjeta Azul - En espera de autorización */}
+                    <TouchableOpacity
+                        style={[styles.statCard, styles.statCardPending]}
+                        onPress={() => handleViewOnus('pending')}
+                        activeOpacity={0.8}
+                    >
+                        <View style={styles.statCardHeader}>
+                            <Text style={styles.statCardIcon}>⏳</Text>
+                            <Text style={styles.statCardValue}>
+                                {String(onusStats.pending || 0)}
+                            </Text>
+                        </View>
+                        <Text style={styles.statCardTitle}>En espera de autorización</Text>
+                        <View style={styles.statCardDetails}>
+                            <Text style={styles.statCardDetailText}>
+                                D: {String(onusStats.pending_discovered || 0)}
+                            </Text>
+                            <Text style={styles.statCardDetailText}>
+                                Resync: {String(onusStats.pending_resync || 0)}
+                            </Text>
+                            <Text style={styles.statCardDetailText}>
+                                Nuevas: {String(onusStats.pending_new || 0)}
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    {/* Tarjeta Verde - ONUs en línea */}
+                    <TouchableOpacity
+                        style={[styles.statCard, styles.statCardOnline]}
+                        onPress={() => handleViewOnus('authorized')}
+                        activeOpacity={0.8}
+                    >
+                        <View style={styles.statCardHeader}>
+                            <Text style={styles.statCardIcon}>✅</Text>
+                            <Text style={styles.statCardValue}>
+                                {String(onusStats.online || onusStats.authorized || 0)}
+                            </Text>
+                        </View>
+                        <Text style={styles.statCardTitle}>ONUs en línea</Text>
+                        <View style={styles.statCardDetails}>
+                            <Text style={styles.statCardDetailText}>
+                                Total autorizadas: {String(onusStats.authorized || 0)}
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    {/* Tarjeta Gris - ONUs fuera de línea */}
+                    <TouchableOpacity
+                        style={[styles.statCard, styles.statCardOffline]}
+                        onPress={() => handleViewOnus('offline')}
+                        activeOpacity={0.8}
+                    >
+                        <View style={styles.statCardHeader}>
+                            <Text style={styles.statCardIcon}>🔴</Text>
+                            <Text style={styles.statCardValue}>
+                                {String(onusStats.offline || 0)}
+                            </Text>
+                        </View>
+                        <Text style={styles.statCardTitle}>ONUs fuera de línea</Text>
+                        <View style={styles.statCardDetails}>
+                            <Text style={styles.statCardDetailText}>
+                                Falla energía: {String(onusStats.offline_power_fail || 0)}
+                            </Text>
+                            <Text style={styles.statCardDetailText}>
+                                Pérdida señal: {String(onusStats.offline_los || 0)}
+                            </Text>
+                            <Text style={styles.statCardDetailText}>
+                                Sin clasificar: {String(onusStats.offline_na || 0)}
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    {/* Tarjeta Naranja - ONUs con señal baja */}
+                    <TouchableOpacity
+                        style={[styles.statCard, styles.statCardLowSignal]}
+                        onPress={() => handleViewOnus('low_signal')}
+                        activeOpacity={0.8}
+                    >
+                        <View style={styles.statCardHeader}>
+                            <Text style={styles.statCardIcon}>⚠️</Text>
+                            <Text style={styles.statCardValue}>
+                                {String(onusStats.low_signal || 0)}
+                            </Text>
+                        </View>
+                        <Text style={styles.statCardTitle}>ONUs con señal baja</Text>
+                        <View style={styles.statCardDetails}>
+                            <Text style={styles.statCardDetailText}>
+                                Advertencia: {String(onusStats.low_signal_warning || 0)}
+                            </Text>
+                            <Text style={styles.statCardDetailText}>
+                                Críticas: {String(onusStats.low_signal_critical || 0)}
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
                 </View>
             </View>
         );
     };
 
-    // Render ONUs management section
-    const renderOnusManagement = () => {
+    // Render advanced options/links
+    const renderAdvancedOptions = () => {
+        const options = [
+            { id: 'cards', icon: '🎴', label: 'OLT Cards', screen: 'OLTCards' },
+            { id: 'pon_ports', icon: '🔌', label: 'PON Ports', screen: 'PONPorts' },
+            { id: 'uplink', icon: '↗️', label: 'Uplink', screen: 'OLTUplink' },
+            { id: 'vlans', icon: '🏷️', label: 'VLANs', screen: 'OLTVLANs' },
+            { id: 'mgmt_ips', icon: '🌐', label: 'ONU Mgmt IPs', screen: 'ONUMgmtIPs' },
+            { id: 'remote_acls', icon: '🔒', label: 'Remote ACLs', screen: 'RemoteACLs' },
+            { id: 'voip', icon: '📞', label: 'VoIP Profiles', screen: 'VoIPProfiles' },
+            { id: 'advanced', icon: '⚙️', label: 'Advanced', screen: 'OLTAdvanced' },
+        ];
+
         return (
-            <View style={styles.managementCard}>
-                <Text style={styles.managementTitle}>🔗 Gestión de ONUs</Text>
-                <Text style={styles.managementSubtitle}>Administra las unidades ópticas de red conectadas</Text>
+            <View style={styles.advancedOptionsContainer}>
+                <Text style={styles.sectionTitle}>🔧 Configuración Avanzada</Text>
+                <View style={styles.optionsGrid}>
+                    {options.map((option) => (
+                        <TouchableOpacity
+                            key={option.id}
+                            style={styles.optionCard}
+                            onPress={() => {
+                                // Navegación directa para OLT Cards
+                                if (option.id === 'cards') {
+                                    navigation.navigate(option.screen, {
+                                        oltId: oltId,
+                                        oltName: olt?.nombre_olt,
+                                        oltData: olt
+                                    });
+                                    return;
+                                }
 
-                <View style={styles.onuButtonsContainer}>
-                    <TouchableOpacity
-                        style={[styles.onuButton, styles.onuButtonAll]}
-                        onPress={() => handleViewOnus()}
-                    >
-                        <Text style={styles.onuButtonIcon}>📋</Text>
-                        <Text style={styles.onuButtonText}>Todas las ONUs</Text>
-                        {onusStats?.total != null && (
-                            <Text style={styles.onuButtonCount}>{String(onusStats.total)}</Text>
-                        )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.onuButton, styles.onuButtonAuthorized]}
-                        onPress={() => handleViewOnus('authorized')}
-                    >
-                        <Text style={styles.onuButtonIcon}>✅</Text>
-                        <Text style={styles.onuButtonText}>Autorizadas</Text>
-                        {onusStats?.authorized != null && (
-                            <Text style={styles.onuButtonCount}>{String(onusStats.authorized)}</Text>
-                        )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.onuButton, styles.onuButtonPending]}
-                        onPress={() => handleViewOnus('pending')}
-                    >
-                        <Text style={styles.onuButtonIcon}>⏳</Text>
-                        <Text style={styles.onuButtonText}>En Espera</Text>
-                        {onusStats?.pending != null && (
-                            <Text style={styles.onuButtonCount}>{String(onusStats.pending)}</Text>
-                        )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.onuButton, styles.onuButtonOffline]}
-                        onPress={() => handleViewOnus('offline')}
-                    >
-                        <Text style={styles.onuButtonIcon}>🔴</Text>
-                        <Text style={styles.onuButtonText}>Desconectadas</Text>
-                        {onusStats?.offline != null && (
-                            <Text style={styles.onuButtonCount}>{String(onusStats.offline)}</Text>
-                        )}
-                    </TouchableOpacity>
+                                // TODO: Navegar a la pantalla correspondiente (otras opciones)
+                                Alert.alert(
+                                    option.label,
+                                    `Navegando a ${option.label}...\n\nPantalla: ${option.screen}\nOLT ID: ${oltId}`,
+                                    [
+                                        {
+                                            text: 'Cancelar',
+                                            style: 'cancel'
+                                        },
+                                        {
+                                            text: 'Ir',
+                                            onPress: () => {
+                                                // Descomentar cuando las pantallas estén creadas
+                                                // navigation.navigate(option.screen, {
+                                                //     oltId: oltId,
+                                                //     oltName: olt?.nombre_olt,
+                                                //     oltData: olt
+                                                // });
+                                                console.log(`Navegando a ${option.screen}`);
+                                            }
+                                        }
+                                    ]
+                                );
+                            }}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={styles.optionIcon}>{option.icon}</Text>
+                            <Text style={styles.optionLabel}>{option.label}</Text>
+                        </TouchableOpacity>
+                    ))}
                 </View>
             </View>
         );
@@ -498,8 +821,9 @@ const OLTDetailsScreen = () => {
                 {!isLoading && !error && olt && (
                     <>
                         {renderOltInfo()}
-                        {renderCapacityStats()}
-                        {renderOnusManagement()}
+                        {renderOltSettings()}
+                        {renderOnuStatistics()}
+                        {renderAdvancedOptions()}
                     </>
                 )}
 
@@ -509,9 +833,20 @@ const OLTDetailsScreen = () => {
                             Última actualización: {format(lastUpdate, 'dd/MM/yyyy HH:mm:ss')}
                         </Text>
                         {isCached && (
-                            <Text style={styles.cacheIndicator}>
-                                📦 Datos en caché (actualiza en 60s)
-                            </Text>
+                            <View style={styles.cacheWarningContainer}>
+                                <Text style={styles.cacheIndicator}>
+                                    📦 Datos en caché del backend
+                                </Text>
+                                <TouchableOpacity
+                                    style={styles.forceRefreshButton}
+                                    onPress={handleRefresh}
+                                    disabled={isRefreshing}
+                                >
+                                    <Text style={styles.forceRefreshButtonText}>
+                                        {isRefreshing ? '⟳ Actualizando...' : '🔄 Actualizar Ahora'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
                         )}
                         {!isCached && olt && (
                             <Text style={styles.realtimeIndicator}>

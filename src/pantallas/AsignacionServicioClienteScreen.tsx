@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, FlatList, ActivityIndicator, Modal, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../ThemeContext';
 import ThemeSwitch from '../componentes/themeSwitch';
 import { getStyles } from '../estilos/styles';
 import axios from 'axios';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const AsignacionServicioClienteScreen = ({ navigation, route }) => {
     const { serviceId, clientId, userId, ispId, clienteDireccion, clienteReferencia } = route.params || {};
@@ -14,6 +15,7 @@ const AsignacionServicioClienteScreen = ({ navigation, route }) => {
     const [tiposDeConexion, setTiposDeConexion] = useState([]);
     const [tipoConexion, setTipoConexion] = useState(null);
     const [showTipoConexionList, setShowTipoConexionList] = useState(false);
+    const [modalServiciosVisible, setModalServiciosVisible] = useState(false);
     const [ciclosDeFacturacion, setCiclosDeFacturacion] = useState([]);
     const [cicloSeleccionado, setCicloSeleccionado] = useState(null);
     const [showCicloFacturacionList, setShowCicloFacturacionList] = useState(false);
@@ -101,7 +103,11 @@ const AsignacionServicioClienteScreen = ({ navigation, route }) => {
             if (response.data && Array.isArray(response.data.servicios)) {
                 const itemsDeConexion = response.data.servicios.map(servicio => ({
                     label: `${servicio.nombre_servicio} - ${formatCurrency(servicio.precio_servicio)} Mensual`,
-                    value: servicio.id_servicio
+                    value: servicio.id_servicio,
+                    nombre: servicio.nombre_servicio,
+                    precio: servicio.precio_servicio,
+                    descripcion: servicio.descripcion_servicio || '',
+                    velocidad: servicio.velocidad_servicio || ''
                 }));
 
                 setTiposDeConexion(itemsDeConexion);
@@ -201,6 +207,31 @@ const AsignacionServicioClienteScreen = ({ navigation, route }) => {
         }
     };
 
+    const registrarEventoAsignacion = async (idConexion, nombreServicio) => {
+        try {
+            const eventData = {
+                id_conexion: idConexion,
+                tipo_evento: 'Asignación de servicio',
+                mensaje: `Servicio asignado: ${nombreServicio}`,
+                id_usuario: usuarioId,
+                nota: `Nueva conexión creada con el servicio ${nombreServicio}`
+            };
+
+            console.log('📝 Registrando evento de asignación:', eventData);
+
+            const response = await axios.post('https://wellnet-rd.com:444/api/log-cortes/registrar', eventData);
+
+            if (response.status === 200 || response.status === 201) {
+                console.log('✅ Evento de asignación registrado exitosamente');
+            } else {
+                console.warn('⚠️ No se pudo registrar el evento de asignación');
+            }
+        } catch (error) {
+            console.error('❌ Error al registrar el evento de asignación:', error);
+            // No mostramos error al usuario para no interrumpir el flujo
+        }
+    };
+
     const handleAddNew = async () => {
         const newConnectionData = {
             id_isp: ispId,
@@ -216,6 +247,20 @@ const AsignacionServicioClienteScreen = ({ navigation, route }) => {
             const response = await axios.post('https://wellnet-rd.com:444/api/conexiones/agregar', newConnectionData);
 
             if (response.status === 200 || response.status === 201) {
+                console.log('✅ Conexión creada exitosamente:', response.data);
+
+                // Obtener el ID de la nueva conexión y el nombre del servicio
+                const nuevaConexionId = response.data?.id_conexion || response.data?.insertId;
+                const servicioSeleccionado = tiposDeConexion.find(item => item.value === tipoConexion);
+                const nombreServicio = servicioSeleccionado?.label || 'Servicio desconocido';
+
+                // Registrar el evento de asignación de servicio
+                if (nuevaConexionId) {
+                    await registrarEventoAsignacion(nuevaConexionId, nombreServicio);
+                } else {
+                    console.warn('⚠️ No se pudo obtener el ID de la nueva conexión para registrar el evento');
+                }
+
                 Alert.alert('Éxito', 'La nueva conexión se ha agregado correctamente.', [
                     { text: 'OK', onPress: () => navigation.goBack() },
                 ]);
@@ -225,6 +270,31 @@ const AsignacionServicioClienteScreen = ({ navigation, route }) => {
         } catch (error) {
             console.error('Error al agregar la nueva conexión:', error);
             Alert.alert('Error', 'No se pudo agregar la nueva conexión. Intente nuevamente.');
+        }
+    };
+
+    const registrarEventoCambioServicio = async (idConexion, servicioNuevo) => {
+        try {
+            const eventData = {
+                id_conexion: idConexion,
+                tipo_evento: 'Cambio de servicio',
+                mensaje: `Servicio actualizado a: ${servicioNuevo}`,
+                id_usuario: usuarioId,
+                nota: `El servicio de esta conexión fue actualizado a ${servicioNuevo}`
+            };
+
+            console.log('📝 Registrando evento de cambio de servicio:', eventData);
+
+            const response = await axios.post('https://wellnet-rd.com:444/api/log-cortes/registrar', eventData);
+
+            if (response.status === 200 || response.status === 201) {
+                console.log('✅ Evento de cambio de servicio registrado exitosamente');
+            } else {
+                console.warn('⚠️ No se pudo registrar el evento de cambio de servicio');
+            }
+        } catch (error) {
+            console.error('❌ Error al registrar el evento de cambio de servicio:', error);
+            // No mostramos error al usuario para no interrumpir el flujo
         }
     };
 
@@ -238,22 +308,135 @@ const AsignacionServicioClienteScreen = ({ navigation, route }) => {
             direccion,
             referencia,
             precio,
+            // NO incluir id_usuario por ahora, causa error en el backend
+            // El backend necesita ser actualizado para soportar este campo
         };
+
+        console.log('📤 Enviando datos de actualización:', JSON.stringify(updateConnectionData, null, 2));
+        console.log('📋 Usuario que realiza la acción:', usuarioId);
 
         try {
             const response = await axios.post('https://wellnet-rd.com:444/api/conexiones/editar-conexion-servicio', updateConnectionData);
 
+            console.log('✅ Respuesta del servidor:', response.data);
+
             if (response.status === 200) {
+                // Obtener los nombres de los servicios para el evento
+                const servicioNuevoObj = tiposDeConexion.find(item => item.value === tipoConexion);
+                const servicioNuevo = servicioNuevoObj?.label || 'Servicio desconocido';
+
+                // Registrar el evento de cambio de servicio con el nombre del usuario
+                // El backend registra automáticamente un evento "Sistema automático" que no queremos
+                // Por eso registramos manualmente este evento con los datos correctos del usuario
+                await registrarEventoCambioServicio(serviceId, servicioNuevo);
+
+                console.log('✅ Conexión actualizada exitosamente');
+
                 Alert.alert('Éxito', 'La conexión se ha actualizado correctamente.', [
                     { text: 'OK', onPress: () => navigation.goBack() },
                 ]);
             } else {
+                console.error('❌ Error en la respuesta:', response.data);
                 Alert.alert('Error', 'No se pudo actualizar la conexión.');
             }
         } catch (error) {
-            console.error('Error al actualizar la conexión:', error);
-            Alert.alert('Error', 'No se pudo actualizar la conexión. Intente nuevamente.');
+            console.error('❌ Error al actualizar la conexión:', error);
+            console.error('❌ Detalles del error:', error.response?.data || error.message);
+
+            // Mostrar más detalles del error si están disponibles
+            const errorMessage = error.response?.data?.message
+                || error.response?.data?.error
+                || 'No se pudo actualizar la conexión. Intente nuevamente.';
+
+            Alert.alert('Error', errorMessage);
         }
+    };
+
+    const renderServiceItem = ({ item }) => {
+        const isSelected = tipoConexion === item.value;
+
+        return (
+            <TouchableOpacity
+                onPress={() => {
+                    setTipoConexion(item.value);
+                    setModalServiciosVisible(false);
+                }}
+                style={[
+                    styles.modernServiceItem,
+                    isSelected && styles.modernServiceItemSelected
+                ]}
+                activeOpacity={0.7}
+            >
+                {/* Icono de servicio */}
+                <View style={[
+                    styles.serviceIconContainer,
+                    { backgroundColor: isSelected ? (isDarkMode ? '#3B82F6' : '#2563EB') : (isDarkMode ? '#374151' : '#F3F4F6') }
+                ]}>
+                    <Icon
+                        name="wifi"
+                        size={24}
+                        color={isSelected ? '#FFFFFF' : (isDarkMode ? '#9CA3AF' : '#6B7280')}
+                    />
+                </View>
+
+                {/* Información del servicio */}
+                <View style={styles.serviceInfoContainer}>
+                    <View style={styles.serviceHeaderRow}>
+                        <Text style={[
+                            styles.serviceName,
+                            { color: isDarkMode ? '#F9FAFB' : '#111827' },
+                            isSelected && { color: isDarkMode ? '#60A5FA' : '#2563EB', fontWeight: '700' }
+                        ]}>
+                            {item.nombre}
+                        </Text>
+                        {isSelected && (
+                            <View style={[styles.selectedBadge, { backgroundColor: isDarkMode ? '#3B82F6' : '#2563EB' }]}>
+                                <Icon name="check" size={14} color="#FFFFFF" />
+                                <Text style={styles.selectedBadgeText}>Seleccionado</Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {item.descripcion && (
+                        <Text style={[
+                            styles.serviceDescription,
+                            { color: isDarkMode ? '#9CA3AF' : '#6B7280' }
+                        ]} numberOfLines={2}>
+                            {item.descripcion}
+                        </Text>
+                    )}
+
+                    <View style={styles.serviceFooterRow}>
+                        {item.velocidad && (
+                            <View style={styles.serviceMetaItem}>
+                                <Icon name="speed" size={14} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                                <Text style={[styles.serviceMetaText, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+                                    {item.velocidad} Mbps
+                                </Text>
+                            </View>
+                        )}
+                        <View style={[
+                            styles.servicePriceBadge,
+                            { backgroundColor: isSelected ? (isDarkMode ? '#10B981' : '#059669') : (isDarkMode ? '#374151' : '#E5E7EB') }
+                        ]}>
+                            <Text style={[
+                                styles.servicePriceText,
+                                { color: isSelected ? '#FFFFFF' : (isDarkMode ? '#F9FAFB' : '#111827') }
+                            ]}>
+                                {formatCurrency(item.precio)}/mes
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Indicador de selección (radio button) */}
+                <Icon
+                    name={isSelected ? "radio-button-checked" : "radio-button-unchecked"}
+                    size={24}
+                    color={isSelected ? (isDarkMode ? '#60A5FA' : '#2563EB') : (isDarkMode ? '#4B5563' : '#D1D5DB')}
+                />
+            </TouchableOpacity>
+        );
     };
 
     const renderItem = ({ item, onPress }) => (
@@ -283,27 +466,17 @@ const AsignacionServicioClienteScreen = ({ navigation, route }) => {
                         )}
                     </View>
                     <TouchableOpacity
-                        onPress={() => setShowTipoConexionList(!showTipoConexionList)}
+                        onPress={() => setModalServiciosVisible(true)}
                         style={styles.selectorButton}
                     >
                         <View style={styles.selectorContent}>
                             <Text style={styles.selectorLabel}>Tipo de servicio</Text>
                             <Text style={styles.selectorValue}>
-                                {servicioSeleccionado ? servicioSeleccionado.label : 'Selecciona el plan a asignar'}
+                                {servicioSeleccionado ? servicioSeleccionado.nombre : 'Selecciona el plan a asignar'}
                             </Text>
                         </View>
-                        <Text style={styles.selectorCaret}>{showTipoConexionList ? '▲' : '▼'}</Text>
+                        <Icon name="chevron-right" size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
                     </TouchableOpacity>
-                    {showTipoConexionList && (
-                        <View style={styles.dropdownList}>
-                            <FlatList
-                                data={tiposDeConexion}
-                                renderItem={({ item }) => renderItem({ item, onPress: () => handleTipoConexionSelect(item) })}
-                                keyExtractor={(item) => item.value.toString()}
-                                nestedScrollEnabled
-                            />
-                        </View>
-                    )}
                     <Text style={styles.sectionHelper}>Incluye la tarifa mensual y características del servicio seleccionado.</Text>
                 </View>
 
@@ -330,6 +503,9 @@ const AsignacionServicioClienteScreen = ({ navigation, route }) => {
                                 renderItem={({ item }) => renderItem({ item, onPress: () => handleCicloSeleccionado(item) })}
                                 keyExtractor={(item) => item.value.toString()}
                                 nestedScrollEnabled
+                                scrollEnabled={true}
+                                showsVerticalScrollIndicator={true}
+                                style={{ maxHeight: 250 }}
                             />
                         </View>
                     )}
@@ -342,10 +518,30 @@ const AsignacionServicioClienteScreen = ({ navigation, route }) => {
                     </View>
                     {tieneDireccionCliente && (
                         <TouchableOpacity
-                            style={styles.copyAddressButton}
-                            onPress={handleUsarDireccionCliente}
+                            style={[
+                                styles.copyAddressButton,
+                                { backgroundColor: isDarkMode ? '#1E3A5F' : '#EFF6FF' }
+                            ]}
+                            onPress={() => {
+                                handleUsarDireccionCliente();
+                                Alert.alert(
+                                    'Dirección copiada',
+                                    'Se ha copiado la dirección del cliente a los campos de ubicación.',
+                                    [{ text: 'OK' }]
+                                );
+                            }}
+                            activeOpacity={0.7}
                         >
-                            <Text style={styles.copyAddressButtonText}>Usar la dirección registrada del cliente</Text>
+                            <Icon name="location-on" size={20} color={isDarkMode ? '#60A5FA' : '#3B82F6'} />
+                            <View style={styles.copyAddressContent}>
+                                <Text style={[styles.copyAddressButtonText, { color: isDarkMode ? '#60A5FA' : '#2563EB' }]}>
+                                    Usar dirección del cliente
+                                </Text>
+                                <Text style={[styles.copyAddressHint, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+                                    {clienteDireccionBase.substring(0, 50)}{clienteDireccionBase.length > 50 ? '...' : ''}
+                                </Text>
+                            </View>
+                            <Icon name="content-copy" size={18} color={isDarkMode ? '#60A5FA' : '#3B82F6'} />
                         </TouchableOpacity>
                     )}
                     <TextInput
@@ -429,6 +625,51 @@ const AsignacionServicioClienteScreen = ({ navigation, route }) => {
                     />
                 </KeyboardAvoidingView>
             )}
+
+            {/* Modal de Selección de Servicios */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={modalServiciosVisible}
+                onRequestClose={() => setModalServiciosVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContainer, { backgroundColor: isDarkMode ? '#1F2937' : '#FFFFFF' }]}>
+                        {/* Header del Modal */}
+                        <View style={[styles.modalHeader, { borderBottomColor: isDarkMode ? '#374151' : '#E5E7EB' }]}>
+                            <View style={styles.modalHeaderContent}>
+                                <Icon name="dns" size={24} color={isDarkMode ? '#60A5FA' : '#3B82F6'} />
+                                <Text style={[styles.modalTitle, { color: isDarkMode ? '#F9FAFB' : '#111827' }]}>
+                                    Seleccionar Servicio
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => setModalServiciosVisible(false)}
+                                style={styles.modalCloseButton}
+                            >
+                                <Icon name="close" size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Contador de servicios */}
+                        <View style={[styles.modalSubheader, { backgroundColor: isDarkMode ? '#374151' : '#F3F4F6' }]}>
+                            <Icon name="list" size={16} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                            <Text style={[styles.modalSubheaderText, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+                                {tiposDeConexion.length} {tiposDeConexion.length === 1 ? 'servicio disponible' : 'servicios disponibles'}
+                            </Text>
+                        </View>
+
+                        {/* Lista de servicios */}
+                        <FlatList
+                            data={tiposDeConexion}
+                            renderItem={renderServiceItem}
+                            keyExtractor={(item) => item.value.toString()}
+                            showsVerticalScrollIndicator={true}
+                            contentContainerStyle={styles.modalList}
+                        />
+                    </View>
+                </View>
+            </Modal>
         </>
     );
 };

@@ -18,6 +18,7 @@ const EventosScreen = ({ route, navigation }) => {
 
     const fetchEventos = async () => {
         try {
+            console.log('🔍 [EventosScreen] Solicitando eventos para conexión:', connectionId);
             const response = await fetch('https://wellnet-rd.com:444/api/obtener-log-cortes', {
                 method: 'POST',
                 headers: {
@@ -27,14 +28,18 @@ const EventosScreen = ({ route, navigation }) => {
             });
 
             const data = await response.json();
+            console.log('📥 [EventosScreen] Eventos recibidos:', data.length, 'eventos');
+            console.log('📋 [EventosScreen] Tipos de eventos:', data.map(e => e.tipo_evento));
+
             if (response.ok) {
-                const eventosOrdenados = data.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));  
+                const eventosOrdenados = data.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
                 setEventos(eventosOrdenados);
+                console.log('✅ [EventosScreen] Eventos ordenados y establecidos:', eventosOrdenados.length);
             } else {
                 throw new Error(data.message || 'Error al obtener las acciones');
             }
         } catch (error) {
-            console.error('Error al obtener las acciones:', error);
+            console.error('❌ [EventosScreen] Error al obtener las acciones:', error);
             Alert.alert('Error', error.message || 'Error al obtener las acciones.');
         } finally {
             setLoading(false);
@@ -110,6 +115,9 @@ const EventosScreen = ({ route, navigation }) => {
         if (tipo.includes('asignación de servicio') || tipo.includes('asignar servicio')) {
             return <Icon name="add-circle" size={size} color={color} />; // Asignación de servicio
         }
+        if (tipo.includes('configuración') || tipo.includes('configurar')) {
+            return <Icon name="settings" size={size} color={color} />; // Configuración de router
+        }
         if (tipo.includes('modif') || tipo.includes('edit')) {
             return <Icon name="edit" size={size} color={color} />; // Modificación
         }
@@ -124,7 +132,8 @@ const EventosScreen = ({ route, navigation }) => {
         if (tipo.includes('alta') || tipo.includes('crear')) return '#3B82F6';
         if (tipo.includes('cambio de servicio') || tipo.includes('cambiar servicio')) return '#0EA5E9'; // Cyan
         if (tipo.includes('asignación de servicio') || tipo.includes('asignar servicio')) return '#14B8A6'; // Teal
-        if (tipo.includes('modif') || tipo.includes('edit')) return '#8B5CF6';
+        if (tipo.includes('configuración') || tipo.includes('configurar')) return '#8B5CF6'; // Purple
+        if (tipo.includes('modif') || tipo.includes('edit')) return '#A855F7';
         return '#6B7280';
     };
 

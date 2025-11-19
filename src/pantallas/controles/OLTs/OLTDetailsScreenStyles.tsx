@@ -12,19 +12,28 @@ const colors = {
         700: '#1D4ED8',
         900: '#1E3A8A'
     },
+    secondary: {
+        50: '#EFF6FF',
+        100: '#DBEAFE',
+        300: '#93C5FD',
+        700: '#1D4ED8',
+        900: '#1E3A8A'
+    },
     success: {
         50: '#ECFDF5',
         100: '#D1FAE5',
         500: '#10B981',
         600: '#059669',
-        700: '#047857'
+        700: '#047857',
+        900: '#064E3B'
     },
     warning: {
         50: '#FFFBEB',
         100: '#FEF3C7',
         500: '#F59E0B',
         600: '#D97706',
-        700: '#B45309'
+        700: '#B45309',
+        900: '#78350F'
     },
     error: {
         50: '#FEF2F2',
@@ -243,6 +252,14 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         marginRight: 16,
     },
 
+    oltImage: {
+        width: 144,
+        height: 144,
+        borderRadius: 24,
+        marginRight: 16,
+        backgroundColor: isDarkMode ? colors.gray[800] : colors.gray[100],
+    },
+
     oltTitleContainer: {
         flex: 1,
     },
@@ -295,89 +312,93 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         textAlign: 'right',
     },
 
-    // Stats card
-    statsCard: {
-        backgroundColor: isDarkMode ? colors.gray[800] : '#FFFFFF',
-        borderRadius: 12,
+    // ONUs Statistics Section
+    onuStatsContainer: {
         marginBottom: 16,
-        padding: 20,
-        borderWidth: 1,
-        borderColor: isDarkMode ? colors.gray[700] : colors.gray[200],
-        shadowColor: isDarkMode ? '#000000' : colors.gray[900],
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: isDarkMode ? 0.3 : 0.1,
-        shadowRadius: 6,
-        elevation: 4,
     },
 
-    statsTitle: {
-        fontSize: 18,
-        fontWeight: '600',
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: '700',
         color: isDarkMode ? colors.gray[100] : colors.gray[900],
         marginBottom: 16,
+        paddingHorizontal: 4,
     },
 
-    statsGrid: {
+    statsCardsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
+        gap: 12,
         justifyContent: 'space-between',
-        marginBottom: 20,
     },
 
-    statItem: {
+    statCard: {
         width: '48%',
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 2,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: isDarkMode ? 0.3 : 0.15,
+        shadowRadius: 8,
+        elevation: 5,
+        minHeight: 140,
+    },
+
+    statCardPending: {
+        backgroundColor: isDarkMode ? colors.secondary[900] : colors.secondary[50],
+        borderColor: isDarkMode ? colors.secondary[700] : colors.secondary[300],
+    },
+
+    statCardOnline: {
+        backgroundColor: isDarkMode ? colors.success[900] : colors.success[50],
+        borderColor: isDarkMode ? colors.success[700] : colors.success[300],
+    },
+
+    statCardOffline: {
+        backgroundColor: isDarkMode ? colors.gray[800] : colors.gray[100],
+        borderColor: isDarkMode ? colors.gray[600] : colors.gray[400],
+    },
+
+    statCardLowSignal: {
+        backgroundColor: isDarkMode ? colors.warning[900] : colors.warning[50],
+        borderColor: isDarkMode ? colors.warning[700] : colors.warning[300],
+    },
+
+    statCardHeader: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
-    },
-
-    statValue: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: isDarkMode ? colors.gray[200] : colors.gray[800],
-        marginBottom: 4,
-    },
-
-    statValueActive: {
-        color: colors.success[600],
-    },
-
-    statValueAvailable: {
-        color: colors.primary[600],
-    },
-
-    statValuePercentage: {
-        color: colors.warning[600],
-    },
-
-    statLabel: {
-        fontSize: 12,
-        color: isDarkMode ? colors.gray[400] : colors.gray[600],
-        textAlign: 'center',
-        fontWeight: '500',
-    },
-
-    progressContainer: {
-        marginTop: 8,
-    },
-
-    progressBar: {
-        height: 8,
-        backgroundColor: isDarkMode ? colors.gray[700] : colors.gray[200],
-        borderRadius: 4,
-        overflow: 'hidden',
+        justifyContent: 'space-between',
         marginBottom: 8,
     },
 
-    progressFill: {
-        height: '100%',
-        backgroundColor: colors.warning[500],
-        borderRadius: 4,
+    statCardIcon: {
+        fontSize: 28,
     },
 
-    progressText: {
-        fontSize: 12,
+    statCardValue: {
+        fontSize: 32,
+        fontWeight: '800',
+        color: isDarkMode ? '#FFFFFF' : colors.gray[900],
+    },
+
+    statCardTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: isDarkMode ? colors.gray[300] : colors.gray[700],
+        marginBottom: 12,
+    },
+
+    statCardDetails: {
+        gap: 4,
+        borderTopWidth: 1,
+        borderTopColor: isDarkMode ? colors.gray[700] : colors.gray[300],
+        paddingTop: 8,
+    },
+
+    statCardDetailText: {
+        fontSize: 11,
         color: isDarkMode ? colors.gray[400] : colors.gray[600],
-        textAlign: 'center',
         fontWeight: '500',
     },
 
@@ -540,5 +561,212 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         color: isDarkMode ? colors.success[400] : colors.success[600],
         fontWeight: '600',
         marginTop: 4,
+    },
+
+    // Cache warning container
+    cacheWarningContainer: {
+        marginTop: 8,
+        padding: 12,
+        backgroundColor: isDarkMode ? colors.warning[900] : colors.warning[50],
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: isDarkMode ? colors.warning[700] : colors.warning[300],
+        alignItems: 'center',
+    },
+
+    forceRefreshButton: {
+        marginTop: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        backgroundColor: isDarkMode ? colors.warning[600] : colors.warning[500],
+        borderRadius: 6,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+
+    forceRefreshButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+
+    // OLT Settings Card
+    settingsCard: {
+        backgroundColor: isDarkMode ? colors.gray[800] : '#FFFFFF',
+        borderRadius: 12,
+        marginBottom: 20,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: isDarkMode ? 0.2 : 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: isDarkMode ? colors.gray[700] : colors.gray[200],
+        overflow: 'hidden',
+    },
+
+    settingsHeader: {
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: isDarkMode ? colors.gray[700] : colors.gray[200],
+    },
+
+    settingsActions: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 12,
+    },
+
+    settingsActionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        backgroundColor: isDarkMode ? colors.gray[700] : colors.gray[100],
+        borderWidth: 1,
+        borderColor: isDarkMode ? colors.gray[600] : colors.gray[300],
+    },
+
+    settingsActionButtonPrimary: {
+        backgroundColor: isDarkMode ? colors.warning[700] : colors.warning[500],
+        borderColor: isDarkMode ? colors.warning[600] : colors.warning[600],
+    },
+
+    settingsActionIcon: {
+        fontSize: 16,
+    },
+
+    settingsActionText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: isDarkMode ? colors.gray[300] : colors.gray[700],
+    },
+
+    settingsActionTextPrimary: {
+        color: '#FFFFFF',
+    },
+
+    settingsTable: {
+        // No padding, las filas tienen su propio padding
+    },
+
+    settingRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: isDarkMode ? colors.gray[700] : colors.gray[100],
+    },
+
+    settingRowEven: {
+        backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : colors.gray[50],
+    },
+
+    settingLabel: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: isDarkMode ? colors.gray[400] : colors.gray[600],
+        flex: 1,
+        paddingRight: 12,
+    },
+
+    settingValueContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        flex: 1,
+        justifyContent: 'flex-end',
+    },
+
+    settingValue: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: isDarkMode ? '#FFFFFF' : colors.gray[900],
+        textAlign: 'right',
+    },
+
+    toggleButton: {
+        padding: 4,
+    },
+
+    toggleButtonText: {
+        fontSize: 16,
+    },
+
+    tr069Link: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        backgroundColor: isDarkMode ? colors.primary[900] + '20' : colors.primary[50],
+        borderTopWidth: 1,
+        borderTopColor: isDarkMode ? colors.gray[700] : colors.gray[200],
+    },
+
+    tr069LinkIcon: {
+        fontSize: 20,
+        marginRight: 8,
+    },
+
+    tr069LinkText: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: '600',
+        color: isDarkMode ? colors.primary[400] : colors.primary[700],
+    },
+
+    tr069LinkArrow: {
+        fontSize: 18,
+        color: isDarkMode ? colors.primary[400] : colors.primary[700],
+    },
+
+    // Advanced Options Section
+    advancedOptionsContainer: {
+        marginBottom: 20,
+    },
+
+    optionsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        marginTop: 12,
+    },
+
+    optionCard: {
+        width: (width - 56) / 2, // 2 columns with gaps
+        backgroundColor: isDarkMode ? colors.gray[800] : '#FFFFFF',
+        borderRadius: 12,
+        padding: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: isDarkMode ? 0.2 : 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: isDarkMode ? colors.gray[700] : colors.gray[200],
+        minHeight: 100,
+    },
+
+    optionIcon: {
+        fontSize: 32,
+        marginBottom: 8,
+    },
+
+    optionLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: isDarkMode ? '#FFFFFF' : colors.gray[900],
+        textAlign: 'center',
+        lineHeight: 18,
     },
 });

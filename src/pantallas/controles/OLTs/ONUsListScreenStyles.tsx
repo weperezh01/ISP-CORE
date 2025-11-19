@@ -151,70 +151,135 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         color: '#FFFFFF',
     },
 
-    // Filter buttons
+    // Filter buttons section
+    filtersSection: {
+        backgroundColor: isDarkMode ? colors.gray[900] : colors.gray[50],
+        paddingVertical: 12,
+    },
+
+    // Primary filters
     filtersContainer: {
         flexDirection: 'row',
         paddingHorizontal: 16,
-        paddingVertical: 12,
         gap: 8,
+        marginBottom: 8,
     },
 
     filterButton: {
         flex: 1,
-        flexDirection: 'row',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 12,
-        paddingHorizontal: 8,
+        paddingHorizontal: 6,
         borderRadius: 12,
         backgroundColor: isDarkMode ? colors.gray[800] : '#FFFFFF',
-        borderWidth: 1,
+        borderWidth: 2,
         borderColor: isDarkMode ? colors.gray[700] : colors.gray[200],
         shadowColor: isDarkMode ? '#000000' : colors.gray[900],
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: isDarkMode ? 0.2 : 0.05,
-        shadowRadius: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: isDarkMode ? 0.3 : 0.08,
+        shadowRadius: 3,
         elevation: 2,
+        minHeight: 70,
     },
 
     filterButtonActive: {
         backgroundColor: colors.warning[500],
         borderColor: colors.warning[600],
         shadowColor: colors.warning[500],
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.4,
+        elevation: 4,
     },
 
     filterIcon: {
-        fontSize: 16,
-        marginRight: 6,
+        fontSize: 24,
+        marginBottom: 4,
+    },
+
+    filterContent: {
+        alignItems: 'center',
+        gap: 2,
     },
 
     filterText: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600',
         color: isDarkMode ? colors.gray[300] : colors.gray[700],
-        flex: 1,
         textAlign: 'center',
     },
 
     filterTextActive: {
         color: '#FFFFFF',
+        fontWeight: '700',
     },
 
     filterCount: {
-        backgroundColor: isDarkMode ? colors.gray[600] : colors.gray[200],
+        fontSize: 14,
+        fontWeight: '700',
+        color: isDarkMode ? colors.gray[200] : colors.gray[700],
+        marginTop: 2,
+    },
+
+    filterCountActive: {
+        color: '#FFFFFF',
+    },
+
+    // Secondary filters
+    secondaryFiltersContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 16,
+        gap: 8,
+        flexWrap: 'wrap',
+    },
+
+    secondaryFilterButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        backgroundColor: isDarkMode ? colors.gray[800] : colors.gray[100],
+        borderWidth: 1,
+        borderColor: isDarkMode ? colors.gray[700] : colors.gray[300],
+    },
+
+    secondaryFilterButtonActive: {
+        backgroundColor: isDarkMode ? colors.primary[700] : colors.primary[500],
+        borderColor: isDarkMode ? colors.primary[600] : colors.primary[600],
+    },
+
+    secondaryFilterIcon: {
+        fontSize: 14,
+        marginRight: 6,
+    },
+
+    secondaryFilterText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: isDarkMode ? colors.gray[300] : colors.gray[700],
+        marginRight: 6,
+    },
+
+    secondaryFilterTextActive: {
+        color: '#FFFFFF',
+    },
+
+    secondaryFilterCount: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: isDarkMode ? colors.gray[400] : colors.gray[600],
+        backgroundColor: isDarkMode ? colors.gray[700] : colors.gray[200],
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 10,
-        marginLeft: 4,
         minWidth: 20,
-        alignItems: 'center',
+        textAlign: 'center',
     },
 
-    filterCountText: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: isDarkMode ? colors.gray[200] : colors.gray[700],
+    secondaryFilterCountActive: {
+        color: '#FFFFFF',
+        backgroundColor: isDarkMode ? colors.primary[600] : colors.primary[700],
     },
 
     // Search section
@@ -280,6 +345,18 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         shadowOpacity: isDarkMode ? 0.3 : 0.1,
         shadowRadius: 6,
         elevation: 4,
+    },
+
+    onuCardIncomplete: {
+        borderColor: isDarkMode ? colors.warning[700] : colors.warning[300],
+        borderWidth: 2,
+        backgroundColor: isDarkMode ? colors.gray[800] : colors.warning[50],
+        borderLeftColor: colors.warning[600],
+    },
+
+    incompleteWarning: {
+        fontSize: 16,
+        color: colors.warning[500],
     },
 
     onuHeader: {
@@ -415,6 +492,21 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         textAlign: 'center',
     },
 
+    warningBanner: {
+        backgroundColor: colors.warning[50],
+        borderColor: colors.warning[500],
+        borderWidth: 1,
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 12,
+    },
+
+    warningBannerText: {
+        color: colors.warning[600],
+        fontSize: 13,
+        fontWeight: '600',
+    },
+
     // Empty state
     emptyStateContainer: {
         flex: 1,
@@ -468,5 +560,34 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         color: isDarkMode ? colors.success[400] : colors.success[600],
         fontWeight: '600',
         textAlign: 'center',
+    },
+
+    footerMeta: {
+        marginTop: 6,
+        fontSize: 12,
+        color: isDarkMode ? colors.gray[400] : colors.gray[600],
+        textAlign: 'center',
+    },
+
+    // ==================== Authorize Button in Card ====================
+    authorizeButtonInCard: {
+        marginTop: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        backgroundColor: '#10B981',
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+
+    authorizeButtonText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '600',
     },
 });

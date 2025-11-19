@@ -12,15 +12,15 @@ const InstallationDetailsModern = ({
     toggleCardExpansion 
 }) => {
     // Debug: Verificar estructura de connectionDetails
-    console.log('🔍 InstallationDetailsModern - connectionDetails:', connectionDetails);
-    console.log('🔍 InstallationDetailsModern - connectionDetails type:', typeof connectionDetails);
-    console.log('🔍 InstallationDetailsModern - is array?', Array.isArray(connectionDetails));
+    // console.log('🔍 InstallationDetailsModern - connectionDetails:', connectionDetails);
+    // console.log('🔍 InstallationDetailsModern - connectionDetails type:', typeof connectionDetails);
+    // console.log('🔍 InstallationDetailsModern - is array?', Array.isArray(connectionDetails));
     
     // Corregir acceso a instalaciones - connectionDetails es un objeto, no un array
     const installations = connectionDetails?.detallesInstalacion || [];
-    
-    console.log('🏗️ Instalaciones encontradas:', installations);
-    console.log('🔍 Número de instalaciones:', installations.length);
+
+    // console.log('🏗️ Instalaciones encontradas:', installations);
+    // console.log('🔍 Número de instalaciones:', installations.length);
 
     const handleViewMaterials = (installation) => {
         // Navegar a InstalacionForm en modo de vista para ver materiales
@@ -32,10 +32,10 @@ const InstallationDetailsModern = ({
             viewMode: 'materials' // Para mostrar solo la sección de materiales
         };
         
-        console.log('🔗 Navegando a InstalacionForm con parámetros:', navParams);
-        console.log('📋 Datos de instalación completos:', installation);
-        console.log('🔍 ID de instalación específico:', installation.id_instalacion);
-        
+        // console.log('🔗 Navegando a InstalacionForm con parámetros:', navParams);
+        // console.log('📋 Datos de instalación completos:', installation);
+        // console.log('🔍 ID de instalación específico:', installation.id_instalacion);
+
         navigation.navigate('InstalacionForm', navParams);
     };
 
@@ -56,10 +56,10 @@ const InstallationDetailsModern = ({
             isEditMode: true
         };
         
-        console.log('✏️ Navegando a EDITAR instalación con parámetros:', navParams);
-        console.log('📋 Datos de instalación completos:', installation);
-        console.log('🔍 ID de instalación específico:', installation.id_instalacion);
-        
+        // console.log('✏️ Navegando a EDITAR instalación con parámetros:', navParams);
+        // console.log('📋 Datos de instalación completos:', installation);
+        // console.log('🔍 ID de instalación específico:', installation.id_instalacion);
+
         navigation.navigate('InstalacionForm', navParams);
     };
 
@@ -121,13 +121,13 @@ const InstallationDetailsModern = ({
     const installationStatus = getInstallationStatus();
 
     // Debug: Ver el estado de las instalaciones
-    console.log('🏗️ Estado de instalaciones:', installationStatus);
-    console.log('📊 Instalaciones disponibles:', installations.map(inst => ({
-        id: inst.id_instalacion,
-        fecha: inst.fecha_guardado,
-        estado: inst.estado,
-        id_estado_conexion: inst.id_estado_conexion
-    })));
+    // console.log('🏗️ Estado de instalaciones:', installationStatus);
+    // console.log('📊 Instalaciones disponibles:', installations.map(inst => ({
+    //     id: inst.id_instalacion,
+    //     fecha: inst.fecha_guardado,
+    //     estado: inst.estado,
+    //     id_estado_conexion: inst.id_estado_conexion
+    // })));
 
     // Colors palette for expand buttons
     const colors = {

@@ -186,7 +186,7 @@ const ConexionDetalles = ({ route }) => {
         
         try {
             setUptimeLoading(true);
-            console.log(`📊 Obteniendo uptime para conexión ${connectionId}`);
+            // console.log(`📊 Obteniendo uptime para conexión ${connectionId}`);
             
             const response = await fetch(`https://wellnet-rd.com:444/api/connection-uptime/${connectionId}`, {
                 method: 'GET',
@@ -200,7 +200,7 @@ const ConexionDetalles = ({ route }) => {
                 
                 // Verificar si la respuesta es HTML (endpoint no disponible)
                 if (responseText.includes('<!doctype html>') || responseText.includes('<html')) {
-                    console.log(`⚠️ Endpoint de uptime no disponible aún para conexión ${connectionId}`);
+                    // console.log(`⚠️ Endpoint de uptime no disponible aún para conexión ${connectionId}`);
                     setUptimeData(null);
                     return;
                 }
@@ -208,10 +208,10 @@ const ConexionDetalles = ({ route }) => {
                 try {
                     const data = JSON.parse(responseText);
                     if (data.success && data.data) {
-                        console.log(`✅ Uptime recibido para conexión ${connectionId}:`, data.data);
+                        // console.log(`✅ Uptime recibido para conexión ${connectionId}:`, data.data);
                         setUptimeData(data.data);
                     } else {
-                        console.log(`❌ No hay datos de uptime para conexión ${connectionId}:`, data);
+                        // console.log(`❌ No hay datos de uptime para conexión ${connectionId}:`, data);
                         setUptimeData(null);
                     }
                 } catch (parseError) {
@@ -235,7 +235,7 @@ const ConexionDetalles = ({ route }) => {
         if (!connectionId) return;
         
         try {
-            console.log(`🔄 Obteniendo datos RT para conexión ${connectionId}`);
+            // console.log(`🔄 Obteniendo datos RT para conexión ${connectionId}`);
             const response = await fetch('https://wellnet-rd.com:444/api/active-connections?realtime=true', {
                 method: 'POST',
                 headers: {
@@ -250,7 +250,7 @@ const ConexionDetalles = ({ route }) => {
                 const data = await response.json();
                 if (data.success && data.data && data.data.length > 0) {
                     const connectionData = data.data[0];
-                    console.log(`📊 Datos RT recibidos para conexión ${connectionId}:`, connectionData);
+                    // console.log(`📊 Datos RT recibidos para conexión ${connectionId}:`, connectionData);
                     
                     setRealtimeData({
                         downloadSpeed: Number(connectionData.download_rate) || 0,
@@ -261,7 +261,7 @@ const ConexionDetalles = ({ route }) => {
                         responseTime: Number(connectionData.response_time) || 0
                     });
                 } else {
-                    console.log(`❌ No hay datos RT para conexión ${connectionId}`);
+                    // console.log(`❌ No hay datos RT para conexión ${connectionId}`);
                     setRealtimeData({
                         downloadSpeed: 0,
                         uploadSpeed: 0,
@@ -445,7 +445,7 @@ const ConexionDetalles = ({ route }) => {
     }, [connectionId]);
 
     useEffect(() => {
-        console.log('🔄 Refrescando datos...');
+        // console.log('🔄 Refrescando datos...');
         obtenerDatosUsuario();
         fetchConnectionDetails();
         fetchConfigDetails();
@@ -457,7 +457,7 @@ const ConexionDetalles = ({ route }) => {
     useEffect(() => {
         if (!connectionId) return;
         
-        console.log(`📊 Obteniendo uptime inicial para conexión ${connectionId}`);
+        // console.log(`📊 Obteniendo uptime inicial para conexión ${connectionId}`);
         fetchConnectionUptime();
         
         // Actualizar uptime cada 5 minutos
@@ -476,7 +476,7 @@ const ConexionDetalles = ({ route }) => {
     useEffect(() => {
         if (!connectionId) return;
 
-        console.log(`🔴 Iniciando tiempo real para conexión ${connectionId}`);
+        // console.log(`🔴 Iniciando tiempo real para conexión ${connectionId}`);
         
         // Hacer la primera llamada inmediatamente
         fetchRealtimeData();
@@ -490,7 +490,7 @@ const ConexionDetalles = ({ route }) => {
         
         // Cleanup al desmontar el componente
         return () => {
-            console.log(`⚫ Deteniendo tiempo real para conexión ${connectionId}`);
+            // console.log(`⚫ Deteniendo tiempo real para conexión ${connectionId}`);
             if (interval) {
                 clearInterval(interval);
             }
@@ -500,7 +500,7 @@ const ConexionDetalles = ({ route }) => {
 
     useFocusEffect(
         useCallback(() => {
-            console.log('🔄 Pantalla ConexionDetalles ha ganado el foco. Refrescando datos...');
+            // console.log('🔄 Pantalla ConexionDetalles ha ganado el foco. Refrescando datos...');
             fetchConnectionDetails();
             fetchConfigDetails();
             fetchPendingIssue(); // Opcional: actualiza la avería pendiente si es necesario
@@ -545,6 +545,7 @@ const ConexionDetalles = ({ route }) => {
         navigation.navigate('AsignacionServicioClienteScreen', {
             isEditMode: true,
             serviceId: connectionId,
+            clientId: connectionDetails.id_cliente, // Agregar el clientId
             ispId: connectionDetails.id_isp,
             usuarioId
         });
@@ -751,6 +752,43 @@ const ConexionDetalles = ({ route }) => {
                     // Operación exitosa
                     setConfigDetails(null);
                     fetchConnectionDetails();
+
+                    // Registrar el evento de eliminación de configuración
+                    try {
+                        const eventData = {
+                            id_conexion: connectionDetails.id_conexion,
+                            tipo_evento: 'Configuración de router',
+                            mensaje: `Configuración eliminada: ${configDetails?.router?.nombre_router || 'Router'}`,
+                            id_usuario: idUsuario,
+                            nota: `Configuración desasignada desde la pantalla de conexión. IP liberada: ${configDetails?.direccion_ip || 'N/A'}, Red: ${configDetails?.red_ip || 'N/A'}`
+                        };
+
+                        console.log('📝 Registrando evento de eliminación de configuración:', eventData);
+
+                        fetch('https://wellnet-rd.com:444/api/log-cortes/registrar', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(eventData),
+                        })
+                        .then(response => response.json())
+                        .then(eventoData => {
+                            console.log('📥 Respuesta del registro de evento:', eventoData);
+                            if (eventoData.id_log) {
+                                console.log('✅ Evento de eliminación de configuración registrado exitosamente - ID:', eventoData.id_log);
+                            } else {
+                                console.error('❌ Error al registrar evento:', eventoData);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('❌ Error al registrar el evento de eliminación de configuración:', error);
+                        });
+                    } catch (error) {
+                        console.error('❌ Error al preparar el evento de eliminación de configuración:', error);
+                        // No mostramos error al usuario para no interrumpir el flujo
+                    }
+
                     Alert.alert('Éxito', 'Configuración desasignada exitosamente.');
                     // Mantenerse en la misma pantalla, solo refrescar
                 } else {
@@ -835,6 +873,40 @@ const ConexionDetalles = ({ route }) => {
             if (response.ok) {
                 const responseData = await response.json();
                 console.log('✅ Respuesta del backend:', responseData);
+
+                // Registrar el evento de cambio de velocidad
+                try {
+                    const eventData = {
+                        id_conexion: connectionId,
+                        tipo_evento: 'Modificación',
+                        mensaje: `Velocidades actualizadas: Subida ${limitValueSubida}${limitUnitSubida}, Bajada ${limitValueBajada}${limitUnitBajada}`,
+                        id_usuario: idUsuario,
+                        nota: `Cambio de límites de velocidad desde la pantalla de conexión. Router: ${configDetails?.router?.nombre_router || 'N/A'}, IP: ${configDetails?.direccion_ip || 'N/A'}`
+                    };
+
+                    console.log('📝 Registrando evento de cambio de velocidad:', eventData);
+
+                    const eventoResponse = await fetch('https://wellnet-rd.com:444/api/log-cortes/registrar', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(eventData),
+                    });
+
+                    const eventoData = await eventoResponse.json();
+                    console.log('📥 Respuesta del registro de evento:', eventoData);
+
+                    if (eventoResponse.ok) {
+                        console.log('✅ Evento de cambio de velocidad registrado exitosamente - ID:', eventoData.id_log);
+                    } else {
+                        console.error('❌ Error al registrar evento:', eventoData);
+                    }
+                } catch (error) {
+                    console.error('❌ Error al registrar el evento de cambio de velocidad:', error);
+                    // No mostramos error al usuario para no interrumpir el flujo
+                }
+
                 Alert.alert('Éxito', 'El límite se actualizó correctamente.');
                 fetchConfigDetails(); // Actualiza los detalles de configuración
                 fetchPendingIssue();  // Actualiza la avería pendiente
