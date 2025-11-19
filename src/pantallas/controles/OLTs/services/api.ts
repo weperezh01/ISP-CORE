@@ -28,21 +28,37 @@ const API_BASE = 'https://wellnet-rd.com:444/api';
 
 /**
  * Helper: Hacer fetch con auth token
+ * @param endpoint - Endpoint de la API
+ * @param token - Token de autenticación
+ * @param options - Opciones de fetch
+ * @param timeoutMs - Timeout en milisegundos (default: 60000 = 60s)
  */
 async function fetchWithAuth<T>(
   endpoint: string,
   token: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  timeoutMs: number = 60000
 ): Promise<ApiResponse<T>> {
   try {
+    // Crear AbortController para manejar timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      console.warn(`⚠️ [API] Timeout after ${timeoutMs}ms for endpoint: ${endpoint}`);
+    }, timeoutMs);
+
     const response = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
+      signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
         ...options.headers,
       },
     });
+
+    // Limpiar el timeout si la petición completó
+    clearTimeout(timeoutId);
 
     // Get content type to check if response is JSON
     const contentType = response.headers.get('content-type');
@@ -96,6 +112,16 @@ async function fetchWithAuth<T>(
       message: data.message,
     };
   } catch (error: any) {
+    // Detectar si fue un timeout (AbortError)
+    if (error.name === 'AbortError') {
+      console.error(`⏱️ [API] Timeout: La petición excedió ${timeoutMs}ms`);
+      return {
+        success: false,
+        error: `Timeout: La operación tardó más de ${timeoutMs / 1000} segundos`,
+        code: 'TIMEOUT',
+      };
+    }
+
     console.error('❌ [API] Network/Fetch Error:', error);
     return {
       success: false,
@@ -143,6 +169,13 @@ export async function getPendingOnus(
 /**
  * Autorizar una ONU pendiente
  * POST /api/olts/realtime/:oltId/onus/:serial/authorize
+ *
+ * NOTA: Esta operación puede tardar hasta 90 segundos debido a:
+ * - Conexión SSH a la OLT
+ * - Ejecución de comandos en la OLT
+ * - Verificación de la configuración
+ *
+ * Timeout: 180 segundos (3 minutos)
  */
 export async function authorizeOnu(
   oltId: string,
@@ -150,19 +183,24 @@ export async function authorizeOnu(
   payload: AuthorizeOnuPayload,
   token: string
 ): Promise<ApiResponse<AuthorizeOnuResponse>> {
+  console.log('🔄 [Authorization] Iniciando autorización (timeout: 180s)...');
+
   return fetchWithAuth<AuthorizeOnuResponse>(
     `/olts/realtime/${oltId}/onus/${serial}/authorize`,
     token,
     {
       method: 'POST',
       body: JSON.stringify(payload),
-    }
+    },
+    180000 // 3 minutos de timeout
   );
 }
 
 /**
  * Desautorizar/Eliminar una ONU autorizada
  * DELETE /api/olts/realtime/:oltId/onus/:serial/deauthorize
+ *
+ * Timeout: 120 segundos (2 minutos)
  */
 export async function deauthorizeOnu(
   oltId: string,
@@ -171,13 +209,16 @@ export async function deauthorizeOnu(
   ontId: number,
   token: string
 ): Promise<ApiResponse<{ success: boolean; message: string }>> {
+  console.log('🗑️ [Deauthorize] Desautorizando ONU (timeout: 120s)...');
+
   return fetchWithAuth<{ success: boolean; message: string }>(
     `/olts/realtime/${oltId}/onus/${serial}/deauthorize`,
     token,
     {
       method: 'DELETE',
       body: JSON.stringify({ puerto, ont_id: ontId }),
-    }
+    },
+    120000 // 2 minutos de timeout
   );
 }
 
@@ -444,43 +485,55 @@ export async function configureLanDhcp(
 /**
  * Reiniciar ONU via TR-069
  * POST /api/olts/realtime/:oltId/onus/:serial/tr069/reboot
+ *
+ * Timeout: 120 segundos (2 minutos)
  */
 export async function rebootOnuTr069(
   oltId: number,
   onuSerial: string,
   token: string
 ): Promise<ApiResponse<{ success: boolean; message: string; task_id?: string }>> {
+  console.log('🔄 [Reboot] Reiniciando ONU (timeout: 120s)...');
+
   return fetchWithAuth<{ success: boolean; message: string; task_id?: string }>(
     `/olts/realtime/${oltId}/onus/${onuSerial}/tr069/reboot`,
     token,
     {
       method: 'POST',
       body: JSON.stringify({ confirm: true }),
-    }
+    },
+    120000 // 2 minutos de timeout
   );
 }
 
 /**
  * Resincronizar configuración de ONU via TR-069
  * POST /api/olts/realtime/:oltId/onus/:serial/tr069/resync-config
+ *
+ * Timeout: 90 segundos
  */
 export async function resyncOnuConfig(
   oltId: number,
   onuSerial: string,
   token: string
 ): Promise<ApiResponse<{ success: boolean; message: string; task_id?: string }>> {
+  console.log('🔄 [Resync] Resincronizando configuración (timeout: 90s)...');
+
   return fetchWithAuth<{ success: boolean; message: string; task_id?: string }>(
     `/olts/realtime/${oltId}/onus/${onuSerial}/tr069/resync-config`,
     token,
     {
       method: 'POST',
-    }
+    },
+    90000 // 90 segundos de timeout
   );
 }
 
 /**
  * Restaurar valores de fábrica de una ONU via TR-069
  * POST /api/olts/realtime/:oltId/onus/:serial/tr069/factory-reset
+ *
+ * Timeout: 150 segundos (2.5 minutos)
  */
 export async function factoryResetOnu(
   oltId: number,
@@ -488,31 +541,39 @@ export async function factoryResetOnu(
   token: string,
   confirm: boolean = true
 ): Promise<ApiResponse<{ success: boolean; message: string; task_id?: string }>> {
+  console.log('⚠️ [Factory Reset] Restaurando valores de fábrica (timeout: 150s)...');
+
   return fetchWithAuth<{ success: boolean; message: string; task_id?: string }>(
     `/olts/realtime/${oltId}/onus/${onuSerial}/tr069/factory-reset`,
     token,
     {
       method: 'POST',
       body: JSON.stringify({ confirm }),
-    }
+    },
+    150000 // 2.5 minutos de timeout
   );
 }
 
 /**
  * Deshabilitar ONU via TR-069
  * POST /api/olts/realtime/:oltId/onus/:serial/tr069/disable
+ *
+ * Timeout: 90 segundos
  */
 export async function disableOnu(
   oltId: number,
   onuSerial: string,
   token: string
 ): Promise<ApiResponse<{ success: boolean; message: string; previous_state?: string; new_state?: string }>> {
+  console.log('⚠️ [Disable] Deshabilitando ONU (timeout: 90s)...');
+
   return fetchWithAuth<{ success: boolean; message: string; previous_state?: string; new_state?: string }>(
     `/olts/realtime/${oltId}/onus/${onuSerial}/tr069/disable`,
     token,
     {
       method: 'POST',
-    }
+    },
+    90000 // 90 segundos de timeout
   );
 }
 
