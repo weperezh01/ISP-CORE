@@ -1474,30 +1474,33 @@ const ONUDetailsScreen = () => {
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={styles.actionButton}
+                            style={styles.actionButtonDisabled}
                             onPress={handleResyncConfig}
-                            activeOpacity={0.8}
+                            activeOpacity={1}
+                            disabled={true}
                         >
-                            <Icon name="refresh" size={18} color="#FFFFFF" />
-                            <Text style={styles.actionButtonText}>Resincronizar</Text>
+                            <Icon name="refresh" size={18} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                            <Text style={styles.actionButtonTextDisabled}>Resincronizar</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={styles.actionButton}
+                            style={styles.actionButtonDisabled}
                             onPress={handleRestoreDefaults}
-                            activeOpacity={0.8}
+                            activeOpacity={1}
+                            disabled={true}
                         >
-                            <Icon name="refresh" size={18} color="#FFFFFF" />
-                            <Text style={styles.actionButtonText}>Restaurar</Text>
+                            <Icon name="refresh" size={18} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                            <Text style={styles.actionButtonTextDisabled}>Restaurar</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={styles.actionButton}
+                            style={styles.actionButtonDisabled}
                             onPress={handleDisableOnu}
-                            activeOpacity={0.8}
+                            activeOpacity={1}
+                            disabled={true}
                         >
-                            <Icon name="refresh" size={18} color="#FFFFFF" />
-                            <Text style={styles.actionButtonText}>Deshabilitar</Text>
+                            <Icon name="refresh" size={18} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                            <Text style={styles.actionButtonTextDisabled}>Deshabilitar</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity

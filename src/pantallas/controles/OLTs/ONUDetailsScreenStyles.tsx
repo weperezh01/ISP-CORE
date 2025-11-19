@@ -1135,6 +1135,27 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         fontWeight: '600',
     },
 
+    actionButtonDisabled: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: isDarkMode ? colors.gray[700] : colors.gray[300],
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        minWidth: 120,
+        flexGrow: 1,
+        flexBasis: 0,
+        opacity: 0.6,
+    },
+
+    actionButtonTextDisabled: {
+        color: isDarkMode ? colors.gray[400] : colors.gray[500],
+        fontSize: 13,
+        fontWeight: '600',
+    },
+
     // ==================== Deauthorizing Modal ====================
     deauthorizingContainer: {
         backgroundColor: isDarkMode ? colors.gray[800] : '#FFFFFF',
