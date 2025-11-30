@@ -172,6 +172,26 @@ const IspDetailsScreen = ({ route, navigation }) => {
       tasaRespuesta: 0,
     },
   });
+  const [totalesServ, setTotalesServ] = useState({
+    totalServicios: 0,
+    totalSuscripciones: 0,
+    precioPromedio: 0,
+    ingresoEstimadoMensual: 0,
+    estadisticas: {
+      serviciosConUso: 0,
+      serviciosSinUso: 0,
+      servicioMasPopular: null,
+      rangoPrecios: {
+        minimo: 0,
+        maximo: 0,
+      },
+    },
+    serviciosAdicionales: {
+      total: 0,
+      activos: 0,
+      inactivos: 0,
+    },
+  });
 
   // 5. Estados para animación de header
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -687,7 +707,7 @@ const totales = async (ispId) => {
       const routersTop = Object.entries(cpr)
         .map(([name, count]) => ({ name, count: Number(count) || 0, pct: totalCfg > 0 ? (Number(count) * 100) / totalCfg : 0 }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 3);
+        .slice(0, 5); // Top 5 routers
 
       setTotalesCfg({
         totalConfiguraciones,
@@ -804,7 +824,84 @@ const totales = async (ispId) => {
       setTotalesUsr({ totalUsuarios: 0, activos: 0, inactivos: 0, roles: {} });
     }
   };
-  
+
+  // ---------------------------------------------------------------------------
+  // Llamada a la API para obtener totales de servicios
+  // ---------------------------------------------------------------------------
+  const serviciosTotales = async (currentIspId) => {
+    try {
+      console.log('🔄 Llamando API totales-servicios con ispId:', currentIspId);
+      const res = await axios.get(`https://wellnet-rd.com:444/api/totales-servicios/${currentIspId}`, {
+        headers: { 'Accept': 'application/json' },
+        timeout: 10000,
+      });
+
+      let payload = res.data;
+      if (typeof payload === 'string') {
+        if (payload.trim().startsWith('<')) {
+          console.error('❌ API totales-servicios retornó HTML');
+          return setTotalesServ({
+            totalServicios: 0,
+            totalSuscripciones: 0,
+            precioPromedio: 0,
+            ingresoEstimadoMensual: 0,
+            estadisticas: {
+              serviciosConUso: 0,
+              serviciosSinUso: 0,
+              servicioMasPopular: null,
+              rangoPrecios: { minimo: 0, maximo: 0 },
+            },
+            serviciosAdicionales: { total: 0, activos: 0, inactivos: 0 },
+          });
+        }
+        try { payload = JSON.parse(payload); } catch { payload = {}; }
+      }
+
+      const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
+
+      const totalServicios = body.totalServicios ?? body.total_servicios ?? 0;
+      const totalSuscripciones = body.totalSuscripciones ?? body.total_suscripciones ?? 0;
+      const precioPromedio = body.precioPromedio ?? body.precio_promedio ?? 0;
+      const ingresoEstimadoMensual = body.ingresoEstimadoMensual ?? body.ingreso_estimado_mensual ?? 0;
+
+      const est = body.estadisticas || {};
+      const estadisticas = {
+        serviciosConUso: est.serviciosConUso ?? est.servicios_con_uso ?? 0,
+        serviciosSinUso: est.serviciosSinUso ?? est.servicios_sin_uso ?? 0,
+        servicioMasPopular: est.servicioMasPopular ?? est.servicio_mas_popular ?? null,
+        rangoPrecios: {
+          minimo: est.rangoPrecios?.minimo ?? est.rango_precios?.minimo ?? 0,
+          maximo: est.rangoPrecios?.maximo ?? est.rango_precios?.maximo ?? 0,
+        },
+      };
+
+      const servAd = body.serviciosAdicionales ?? body.servicios_adicionales ?? {};
+      const serviciosAdicionales = {
+        total: servAd.total ?? 0,
+        activos: servAd.activos ?? 0,
+        inactivos: servAd.inactivos ?? 0,
+      };
+
+      setTotalesServ({ totalServicios, totalSuscripciones, precioPromedio, ingresoEstimadoMensual, estadisticas, serviciosAdicionales });
+      console.log('✅ Totales servicios:', { totalServicios, totalSuscripciones, precioPromedio, ingresoEstimadoMensual });
+    } catch (e) {
+      console.error('❌ Error en totales-servicios:', e.message);
+      setTotalesServ({
+        totalServicios: 0,
+        totalSuscripciones: 0,
+        precioPromedio: 0,
+        ingresoEstimadoMensual: 0,
+        estadisticas: {
+          serviciosConUso: 0,
+          serviciosSinUso: 0,
+          servicioMasPopular: null,
+          rangoPrecios: { minimo: 0, maximo: 0 },
+        },
+        serviciosAdicionales: { total: 0, activos: 0, inactivos: 0 },
+      });
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       await totales(ispId);
@@ -815,6 +912,7 @@ const totales = async (ispId) => {
       await configuracionesTotales(ispId);
       await instalacionesTotales(ispId);
       await usuariosTotales(ispId);
+      await serviciosTotales(ispId);
       await checkAccountingSubscription(ispId);
     };
     loadData();
@@ -937,6 +1035,7 @@ useFocusEffect(
                     await configuracionesTotales(idIsp);
                     await instalacionesTotales(idIsp);
                     await usuariosTotales(idIsp);
+                    await serviciosTotales(idIsp);
                     await checkAccountingSubscription(idIsp); // Recargar estado de contabilidad
                     // await fetchOrderCounts(idIsp);
                 } else {
@@ -1190,35 +1289,139 @@ const botonesData = [
   // ---------------------------------------------------------------------------
   // Render de métricas principales
   // ---------------------------------------------------------------------------
-  const renderStatsCards = () => (
-    <View style={styles.statsContainer}>
-      <View style={styles.statsCard}>
-        <View style={styles.statsHeader}>
-          <View style={[styles.statsIconContainer, { backgroundColor: '#059669' }]}>
-            <Icon name="people" size={24} color="#FFFFFF" />
-          </View>
-          <Text style={styles.statsTitle}>Clientes</Text>
-        </View>
-        <Text style={styles.statsValue}>{totalesIsp.totalClientes}</Text>
-        <Text style={styles.statsSubtext}>
-          {totalesIsp.clientesActivos} activos • {totalesIsp.clientesInactivos} inactivos
-        </Text>
-      </View>
+  const renderStatsCards = () => {
+    console.log('📊 [Dashboard] ========================================');
+    console.log('📊 [Dashboard] renderStatsCards - RENDERIZANDO TARJETAS');
+    console.log('📊 [Dashboard] ========================================');
+    console.log('📊 [Dashboard] totalesIsp:', JSON.stringify(totalesIsp, null, 2));
+    console.log('📊 [Dashboard] totalesCon:', JSON.stringify(totalesCon, null, 2));
+    console.log('📊 [Dashboard] totalesCic:', JSON.stringify(totalesCic, null, 2));
+    console.log('📊 [Dashboard] totalesSms:', JSON.stringify(totalesSms, null, 2));
+    console.log('📊 [Dashboard] totalesOrd:', JSON.stringify(totalesOrd, null, 2));
+    console.log('📊 [Dashboard] totalesCfg:', JSON.stringify(totalesCfg, null, 2));
+    console.log('📊 [Dashboard] totalesInst:', JSON.stringify(totalesInst, null, 2));
+    console.log('📊 [Dashboard] ========================================');
 
-      <View style={styles.statsCard}>
-        <View style={styles.statsHeader}>
-          <View style={[styles.statsIconContainer, { backgroundColor: '#DC2626' }]}>
-            <Icon name="receipt" size={24} color="#FFFFFF" />
+    return (
+      <>
+        {/* Primera fila de tarjetas */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statsCard}>
+            <View style={styles.statsHeader}>
+              <View style={[styles.statsIconContainer, { backgroundColor: '#059669' }]}>
+                <Icon name="people" size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.statsTitle}>Clientes</Text>
+            </View>
+            <Text style={styles.statsValue}>{totalesIsp.totalClientes}</Text>
+            <Text style={styles.statsSubtext}>
+              {totalesIsp.clientesActivos} activos • {totalesIsp.clientesInactivos} inactivos
+            </Text>
           </View>
-          <Text style={styles.statsTitle}>Fact. Vencidas</Text>
+
+          <View style={styles.statsCard}>
+            <View style={styles.statsHeader}>
+              <View style={[styles.statsIconContainer, { backgroundColor: '#DC2626' }]}>
+                <Icon name="receipt" size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.statsTitle}>Fact. Vencidas</Text>
+            </View>
+            <Text style={styles.statsValue}>{totalesIsp.totalFacturasVencidas}</Text>
+            <Text style={styles.statsSubtext}>
+              {totalesIsp.totalFacturasVencidasActivos} activos • {totalesIsp.totalFacturasVencidasInactivos} inactivos
+            </Text>
+          </View>
         </View>
-        <Text style={styles.statsValue}>{totalesIsp.totalFacturasVencidas}</Text>
-        <Text style={styles.statsSubtext}>
-          {totalesIsp.totalFacturasVencidasActivos} activos • {totalesIsp.totalFacturasVencidasInactivos} inactivos
-        </Text>
-      </View>
-    </View>
-  );
+
+        {/* Segunda fila de tarjetas */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statsCard}>
+            <View style={styles.statsHeader}>
+              <View style={[styles.statsIconContainer, { backgroundColor: '#2563EB' }]}>
+                <Icon name="settings-ethernet" size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.statsTitle}>Conexiones</Text>
+            </View>
+            <Text style={styles.statsValue}>{totalesCon.totalConexiones}</Text>
+            <Text style={styles.statsSubtext}>
+              {totalesCon.conexionesActivas} activas • {totalesCon.conexionesInactivas} inactivas
+            </Text>
+          </View>
+
+          <View style={styles.statsCard}>
+            <View style={styles.statsHeader}>
+              <View style={[styles.statsIconContainer, { backgroundColor: '#7C3AED' }]}>
+                <Icon name="description" size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.statsTitle}>Ciclos</Text>
+            </View>
+            <Text style={styles.statsValue}>{totalesCic.totalCiclos}</Text>
+            <Text style={styles.statsSubtext}>
+              {totalesCic.ciclosVigentes} vigentes • {totalesCic.ciclosCerrados} cerrados
+            </Text>
+          </View>
+        </View>
+
+        {/* Tercera fila de tarjetas */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statsCard}>
+            <View style={styles.statsHeader}>
+              <View style={[styles.statsIconContainer, { backgroundColor: '#EC4899' }]}>
+                <Icon name="message" size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.statsTitle}>SMS</Text>
+            </View>
+            <Text style={styles.statsValue}>{totalesSms.totalSmsEnviados}</Text>
+            <Text style={styles.statsSubtext}>
+              {totalesSms.smsExitosos} exitosos • {totalesSms.smsFallidos} fallidos
+            </Text>
+          </View>
+
+          <View style={styles.statsCard}>
+            <View style={styles.statsHeader}>
+              <View style={[styles.statsIconContainer, { backgroundColor: '#F59E0B' }]}>
+                <Icon name="assignment" size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.statsTitle}>Órdenes</Text>
+            </View>
+            <Text style={styles.statsValue}>{totalesOrd.totalOrdenes}</Text>
+            <Text style={styles.statsSubtext}>
+              {totalesOrd.ordenesPendientes} pendientes • {totalesOrd.ordenesCompletadas} completadas
+            </Text>
+          </View>
+        </View>
+
+        {/* Cuarta fila de tarjetas */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statsCard}>
+            <View style={styles.statsHeader}>
+              <View style={[styles.statsIconContainer, { backgroundColor: '#10B981' }]}>
+                <Icon name="settings" size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.statsTitle}>Configuraciones</Text>
+            </View>
+            <Text style={styles.statsValue}>{totalesCfg.totalConfiguraciones}</Text>
+            <Text style={styles.statsSubtext}>
+              {totalesCfg.configuracionesActivas} activas • {totalesCfg.configuracionesIncompletas} incompletas
+            </Text>
+          </View>
+
+          <View style={styles.statsCard}>
+            <View style={styles.statsHeader}>
+              <View style={[styles.statsIconContainer, { backgroundColor: '#8B5CF6' }]}>
+                <Icon name="build" size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.statsTitle}>Instalaciones</Text>
+            </View>
+            <Text style={styles.statsValue}>{totalesInst.totalInstalaciones}</Text>
+            <Text style={styles.statsSubtext}>
+              {totalesInst.equipos.configuradas} config. • {totalesInst.equipos.sinConfig} sin config.
+            </Text>
+          </View>
+        </View>
+      </>
+    );
+  };
 
   // ---------------------------------------------------------------------------
   // Render de alertas y notificaciones
@@ -1641,19 +1844,151 @@ const botonesData = [
             {/* Total usuarios */}
             <Text style={styles.metricSubtle}>Total: {totalesUsr.totalUsuarios || 0}</Text>
 
-            {/* Mini gráfico: Activos / Inactivos (si hay datos) */}
+            {/* Mini gráfico: Activos / Inactivos */}
             {(() => {
               const a = totalesUsr.activos || 0;
               const i = totalesUsr.inactivos || 0;
               const total = a + i;
-              if (total === 0) return null;
               return (
                 <View style={styles.miniBarTrack}>
-                  {a > 0 && (<View style={[styles.miniBarSegmentActive, { flex: a }]} />)}
-                  {i > 0 && (<View style={[styles.miniBarSegmentInactive, { flex: i }]} />)}
+                  {total > 0 ? (
+                    <>
+                      {a > 0 && (<View style={[styles.miniBarSegmentActive, { flex: a }]} />)}
+                      {i > 0 && (<View style={[styles.miniBarSegmentInactive, { flex: i }]} />)}
+                    </>
+                  ) : (
+                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
+                  )}
                 </View>
               );
             })()}
+
+            {/* Activos e Inactivos */}
+            <View style={styles.metricGroup}>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotActive]} />
+                <Text style={styles.metricLabel}>Activos</Text>
+                <Text style={styles.metricValue}>{totalesUsr.activos || 0}</Text>
+              </View>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotInactive]} />
+                <Text style={styles.metricLabel}>Inactivos</Text>
+                <Text style={styles.metricValue}>{totalesUsr.inactivos || 0}</Text>
+              </View>
+            </View>
+
+            {/* Top Roles (si hay datos de roles) */}
+            {(() => {
+              const roles = totalesUsr.roles || {};
+              const rolesArray = Object.entries(roles)
+                .map(([rol, cantidad]) => ({ rol, cantidad: Number(cantidad) }))
+                .sort((a, b) => b.cantidad - a.cantidad)
+                .slice(0, 3); // Top 3
+
+              if (rolesArray.length === 0) return null;
+
+              const totalUsr = totalesUsr.totalUsuarios || 0;
+
+              return (
+                <>
+                  <View style={styles.divider} />
+                  <View style={styles.metricGroup}>
+                    <View style={styles.metricRow}>
+                      <Icon name="group" size={14} color={isDarkMode ? '#60A5FA' : '#3B82F6'} />
+                      <Text style={styles.metricLabel}>Top Roles</Text>
+                    </View>
+                    {rolesArray.map((item, idx) => {
+                      const pct = totalUsr > 0 ? (item.cantidad / totalUsr) * 100 : 0;
+                      return (
+                        <View key={`rol-${idx}`} style={styles.metricRow}>
+                          <View style={[
+                            styles.statusDot,
+                            idx === 0 ? styles.statusDotActive : styles.statusDotInfo,
+                          ]} />
+                          <Text style={styles.metricLabel}>{item.rol}</Text>
+                          <Text style={styles.metricValue}>
+                            {item.cantidad} ({pct.toFixed(0)}%)
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </>
+              );
+            })()}
+          </View>
+        )}
+
+        {!esOperador && item.id === '3' && (
+          <View style={styles.metricsContainer}>
+            {/* Total planes y suscripciones */}
+            <Text style={styles.metricSubtle}>
+              Planes: {totalesServ.totalServicios || 0} • Suscripciones: {totalesServ.totalSuscripciones || 0}
+            </Text>
+
+            {/* Mini gráfico: Servicios con uso / sin uso */}
+            {(() => {
+              const conUso = totalesServ.estadisticas?.serviciosConUso || 0;
+              const sinUso = totalesServ.estadisticas?.serviciosSinUso || 0;
+              const total = conUso + sinUso;
+              return (
+                <View style={styles.miniBarTrack}>
+                  {total > 0 ? (
+                    <>
+                      {conUso > 0 && (<View style={[styles.miniBarSegmentActive, { flex: conUso }]} />)}
+                      {sinUso > 0 && (<View style={[styles.miniBarSegmentInactive, { flex: sinUso }]} />)}
+                    </>
+                  ) : (
+                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
+                  )}
+                </View>
+              );
+            })()}
+
+            {/* Precio promedio e ingreso mensual */}
+            <View style={styles.metricGroup}>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotInfo]} />
+                <Text style={styles.metricLabel}>Precio prom.</Text>
+                <Text style={styles.metricValue}>
+                  ${Number(totalesServ.precioPromedio || 0).toFixed(2)}
+                </Text>
+              </View>
+              <View style={styles.metricRow}>
+                <View style={[styles.statusDot, styles.statusDotActive]} />
+                <Text style={styles.metricLabel}>Ingreso mensual</Text>
+                <Text style={[styles.metricValue, styles.metricValueSuccess]}>
+                  ${Number(totalesServ.ingresoEstimadoMensual || 0).toLocaleString()}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Servicio más popular */}
+            <View style={styles.metricGroup}>
+              {totalesServ.estadisticas?.servicioMasPopular ? (
+                <>
+                  <View style={styles.metricRow}>
+                    <Icon name="star" size={14} color={isDarkMode ? '#FCD34D' : '#F59E0B'} />
+                    <Text style={styles.metricLabel}>Más popular</Text>
+                  </View>
+                  <View style={styles.metricRow}>
+                    <Text style={[styles.metricLabel, { fontSize: 11, opacity: 0.9 }]}>
+                      {totalesServ.estadisticas.servicioMasPopular.nombre}
+                    </Text>
+                    <Text style={styles.metricValue}>
+                      {totalesServ.estadisticas.servicioMasPopular.suscripciones} suscr.
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.metricRow}>
+                  <Icon name="info" size={14} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                  <Text style={[styles.metricLabel, { opacity: 0.6 }]}>Sin datos de popularidad</Text>
+                </View>
+              )}
+            </View>
           </View>
         )}
 
@@ -1814,6 +2149,15 @@ const botonesData = [
   // ---------------------------------------------------------------------------
   // Render principal
   // ---------------------------------------------------------------------------
+  console.log('🎨 [Dashboard] ========================================');
+  console.log('🎨 [Dashboard] RENDER PRINCIPAL DEL DASHBOARD');
+  console.log('🎨 [Dashboard] ========================================');
+  console.log('🎨 [Dashboard] ISP:', isp?.nombre);
+  console.log('🎨 [Dashboard] ispId:', ispId);
+  console.log('🎨 [Dashboard] totalesIsp disponible:', totalesIsp ? 'Sí' : 'No');
+  console.log('🎨 [Dashboard] Total clientes:', totalesIsp?.totalClientes);
+  console.log('🎨 [Dashboard] ========================================');
+
   return (
     <View style={styles.container}>
       {/* Header moderno animado */}
@@ -1850,7 +2194,7 @@ const botonesData = [
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        {/* Métricas principales - Comentado para quitar las tarjetas */}
+        {/* Métricas principales - OCULTAS */}
         {/* {renderStatsCards()} */}
 
         {/* Alertas y notificaciones */}
