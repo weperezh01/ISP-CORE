@@ -898,6 +898,10 @@ const totales = async (ispId) => {
 
       setTotalesServ({ totalServicios, totalSuscripciones, precioPromedio, ingresoEstimadoMensual, estadisticas, serviciosAdicionales, planes });
       console.log('✅ Totales servicios:', { totalServicios, totalSuscripciones, precioPromedio, ingresoEstimadoMensual, totalPlanes: planes.length });
+      console.log('📋 Planes recibidos del backend:', planes.length > 0 ? planes : 'Array vacío o no existe');
+      if (planes.length > 0) {
+        console.log('📊 Primeros 3 planes:', planes.slice(0, 3));
+      }
     } catch (e) {
       console.error('❌ Error en totales-servicios:', e.message);
       setTotalesServ({

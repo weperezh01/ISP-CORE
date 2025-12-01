@@ -1514,6 +1514,12 @@ const getStyles = (isDarkMode) => StyleSheet.create({
     servicesPlanSubs: {
         fontSize: 12,
         color: isDarkMode ? colors.gray[200] : colors.gray[800],
+        fontWeight: '500',
+    },
+    servicesPlanPct: {
+        fontSize: 10,
+        color: isDarkMode ? colors.gray[400] : colors.gray[600],
+        marginTop: 2,
     },
 
     // Users summary card

@@ -161,43 +161,57 @@ const ServicesSummaryCard: React.FC<ServicesSummaryCardProps> = ({
         </View>
 
         {/* Sección de planes y suscripciones */}
-        {planesTop.length > 0 && (
-          <View style={styles.servicesPlansSection}>
-            <View style={styles.servicesPlansHeader}>
-              <Text style={styles.servicesPlansTitle}>Planes y suscripciones</Text>
+        <View style={styles.servicesPlansSection}>
+          <View style={styles.servicesPlansHeader}>
+            <Text style={styles.servicesPlansTitle}>Detalle de planes</Text>
+            {planesTop.length > 0 && (
               <Text style={styles.servicesPlansSubtitle}>
                 {`${planesTop.length} de ${planes} planes`}
               </Text>
-            </View>
-
-            {planesTop.map((plan) => (
-              <View key={plan.id} style={styles.servicesPlanRow}>
-                <View style={styles.servicesPlanLeft}>
-                  <View style={styles.servicesPlanBullet} />
-                  <Text
-                    style={styles.servicesPlanName}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                  >
-                    {plan.nombre}
-                  </Text>
-                </View>
-
-                <View style={styles.servicesPlanCenter}>
-                  <Text style={styles.servicesPlanPrice}>
-                    {formatCurrency(plan.precio)}
-                  </Text>
-                </View>
-
-                <View style={styles.servicesPlanRight}>
-                  <Text style={styles.servicesPlanSubs}>
-                    {plan.suscripciones} suscr.
-                  </Text>
-                </View>
-              </View>
-            ))}
+            )}
           </View>
-        )}
+
+          {planesTop.length > 0 ? (
+            planesTop.map((plan) => {
+              const planPct = suscripciones > 0 ? (plan.suscripciones / suscripciones) * 100 : 0;
+              return (
+                <View key={plan.id} style={styles.servicesPlanRow}>
+                  <View style={styles.servicesPlanLeft}>
+                    <View style={styles.servicesPlanBullet} />
+                    <Text
+                      style={styles.servicesPlanName}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {plan.nombre}
+                    </Text>
+                  </View>
+
+                  <View style={styles.servicesPlanCenter}>
+                    <Text style={styles.servicesPlanPrice}>
+                      {formatCurrency(plan.precio)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.servicesPlanRight}>
+                    <Text style={styles.servicesPlanSubs}>
+                      {plan.suscripciones} suscr.
+                    </Text>
+                    {suscripciones > 0 && (
+                      <Text style={styles.servicesPlanPct}>
+                        {planPct.toFixed(1)}%
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })
+          ) : (
+            <Text style={styles.servicesPopularEmpty}>
+              No hay información de planes disponible
+            </Text>
+          )}
+        </View>
       </LinearGradient>
     </View>
   );
