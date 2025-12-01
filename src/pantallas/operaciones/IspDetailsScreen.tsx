@@ -25,6 +25,15 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import CardButtonLayout from './componentes/renderCard';
+import ConnectionsSummaryCard from './componentes/ConnectionsSummaryCard';
+import ClientsSummaryCard from './componentes/ClientsSummaryCard';
+import BillingSummaryCard from './componentes/BillingSummaryCard';
+import ConfigurationsSummaryCard from './componentes/ConfigurationsSummaryCard';
+import SmsSummaryCard from './componentes/SmsSummaryCard';
+import InstallationsSummaryCard from './componentes/InstallationsSummaryCard';
+import UsersSummaryCard from './componentes/UsersSummaryCard';
+import ServicesSummaryCard from './componentes/ServicesSummaryCard';
+import ServiceOrdersSummaryCard from './componentes/ServiceOrdersSummaryCard';
 import { set } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -1547,594 +1556,105 @@ const botonesData = [
         )}
 
         {!esOperador && item.id === '2' && (
-          <View style={styles.metricsContainer}>
-            {/* Total */}
-            <Text style={styles.metricSubtle}>Total: {totalesIsp.totalClientes || 0}</Text>
-
-            {/* Mini gráfico de barras Activos/Inactivos */}
-            {(() => {
-              const activos = totalesIsp.clientesActivos || 0;
-              const inactivos = totalesIsp.clientesInactivos || 0;
-              const totalAI = activos + inactivos;
-              return (
-                <View style={styles.miniBarTrack}>
-                  {totalAI > 0 ? (
-                    <>
-                      {activos > 0 && (
-                        <View style={[styles.miniBarSegmentActive, { flex: activos }]} />
-                      )}
-                      {inactivos > 0 && (
-                        <View style={[styles.miniBarSegmentInactive, { flex: inactivos }]} />
-                      )}
-                    </>
-                  ) : (
-                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
-                  )}
-                </View>
-              );
-            })()}
-
-            {/* Activos */}
-            <View style={styles.metricGroup}>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotActive]} />
-                <Text style={styles.metricLabel}>Activos</Text>
-                <Text style={styles.metricValue}>{totalesIsp.clientesActivos || 0}</Text>
-              </View>
-              <View style={styles.metricRow}>
-                <Icon name="warning-amber" size={14} color={isDarkMode ? '#F59E0B' : '#B45309'} />
-                <Text style={styles.metricLabel}>Fact. Vencidas</Text>
-                <Text style={[styles.metricValue, styles.metricValueWarning]}>{totalesIsp.totalFacturasVencidasActivos || 0}</Text>
-              </View>
-            </View>
-
-            <View style={styles.divider} />
-
-            {/* Inactivos */}
-            <View style={styles.metricGroup}>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotInactive]} />
-                <Text style={styles.metricLabel}>Inactivos</Text>
-                <Text style={styles.metricValue}>{totalesIsp.clientesInactivos || 0}</Text>
-              </View>
-              <View style={styles.metricRow}>
-                <Icon name="warning-amber" size={14} color={isDarkMode ? '#F59E0B' : '#B45309'} />
-                <Text style={styles.metricLabel}>Fact. Vencidas</Text>
-                <Text style={[styles.metricValue, styles.metricValueWarning]}>{totalesIsp.totalFacturasVencidasInactivos || 0}</Text>
-              </View>
-            </View>
-          </View>
+          <ClientsSummaryCard
+            totalClients={totalesIsp.totalClientes || 0}
+            activeClients={totalesIsp.clientesActivos || 0}
+            inactiveClients={totalesIsp.clientesInactivos || 0}
+            overdueActive={totalesIsp.totalFacturasVencidasActivos || 0}
+            overdueInactive={totalesIsp.totalFacturasVencidasInactivos || 0}
+            theme={{ styles, isDarkMode }}
+          />
         )}
 
         {!esOperador && item.id === '7' && (
-          <View style={styles.metricsContainer}>
-            {/* Total */}
-            <Text style={styles.metricSubtle}>Total: {totalesCon.totalConexiones || 0}</Text>
-
-            {/* Mini gráfico de barras: Activas / Suspendidas / Inactivas */}
-            {(() => {
-              const a = totalesCon.conexionesActivas || 0;
-              const s = totalesCon.conexionesSuspendidas || 0;
-              const i = totalesCon.conexionesInactivas || 0;
-              const total = a + s + i;
-              return (
-                <View style={styles.miniBarTrack}>
-                  {total > 0 ? (
-                    <>
-                      {a > 0 && (<View style={[styles.miniBarSegmentActive, { flex: a }]} />)}
-                      {s > 0 && (<View style={[styles.miniBarSegmentSuspended, { flex: s }]} />)}
-                      {i > 0 && (<View style={[styles.miniBarSegmentInactive, { flex: i }]} />)}
-                    </>
-                  ) : (
-                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
-                  )}
-                </View>
-              );
-            })()}
-
-            {/* Activas */}
-            <View style={styles.metricGroup}>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotActive]} />
-                <Text style={styles.metricLabel}>Activas</Text>
-                <Text style={styles.metricValue}>{totalesCon.conexionesActivas || 0}</Text>
-              </View>
-              {/* Suspendidas */}
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotSuspended]} />
-                <Text style={styles.metricLabel}>Suspendidas</Text>
-                <Text style={[styles.metricValue, styles.metricValueWarning]}>{totalesCon.conexionesSuspendidas || 0}</Text>
-              </View>
-            </View>
-
-            <View style={styles.divider} />
-
-            {/* Inactivas */}
-            <View style={styles.metricGroup}>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotInactive]} />
-                <Text style={styles.metricLabel}>Inactivas</Text>
-                <Text style={styles.metricValue}>{totalesCon.conexionesInactivas || 0}</Text>
-              </View>
-            </View>
-          </View>
+          <ConnectionsSummaryCard
+            totalConnections={totalesCon.totalConexiones || 0}
+            active={totalesCon.conexionesActivas || 0}
+            suspended={totalesCon.conexionesSuspendidas || 0}
+            inactive={totalesCon.conexionesInactivas || 0}
+            theme={{ styles, isDarkMode }}
+          />
         )}
 
         {!esOperador && item.id === '1' && (
-          <View style={styles.metricsContainer}>
-            {/* Total ciclos */}
-            <Text style={styles.metricSubtle}>Total: {totalesCic.totalCiclos || 0}</Text>
-
-            {/* Mini gráfico: Vigentes / Cerrados / Vencidos */}
-            {(() => {
-              const v = totalesCic.ciclosVigentes || 0;
-              const c = totalesCic.ciclosCerrados || 0;
-              const x = totalesCic.ciclosVencidos || 0;
-              const total = v + c + x;
-              return (
-                <View style={styles.miniBarTrack}>
-                  {total > 0 ? (
-                    <>
-                      {v > 0 && (<View style={[styles.miniBarSegmentActive, { flex: v }]} />)}
-                      {c > 0 && (<View style={[styles.miniBarSegmentInfo, { flex: c }]} />)}
-                      {x > 0 && (<View style={[styles.miniBarSegmentError, { flex: x }]} />)}
-                    </>
-                  ) : (
-                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
-                  )}
-                </View>
-              );
-            })()}
-
-            {/* Recaudación y pendiente */}
-            <View style={styles.metricGroup}>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotActive]} />
-                <Text style={styles.metricLabel}>Recaudación</Text>
-                {(() => {
-                  const pct = Number(totalesCic.resumenFinanciero?.dineroRecaudadoPorcentaje || 0);
-                  const stylePct = pct >= 80
-                    ? [styles.metricValue, styles.metricValueSuccess]
-                    : (pct <= 10 ? [styles.metricValue, styles.metricValueWarning] : styles.metricValue);
-                  return (
-                    <Text style={stylePct}>
-                      {pct.toFixed(2)}%
-                    </Text>
-                  );
-                })()}
-              </View>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotWarning]} />
-                <Text style={styles.metricLabel}>Pendiente</Text>
-                <Text style={[styles.metricValue, styles.metricValueWarning]}>
-                  ${Number(totalesCic.resumenFinanciero?.dineroPendiente || 0).toLocaleString()}
-                </Text>
-              </View>
-            </View>
-          </View>
+          <BillingSummaryCard
+            totalCycles={totalesCic.totalCiclos || 0}
+            activeCycles={totalesCic.ciclosVigentes || 0}
+            closedCycles={totalesCic.ciclosCerrados || 0}
+            overdueCycles={totalesCic.ciclosVencidos || 0}
+            collectedPercent={totalesCic.resumenFinanciero?.dineroRecaudadoPorcentaje || 0}
+            pendingAmount={totalesCic.resumenFinanciero?.dineroPendiente || 0}
+            theme={{ styles, isDarkMode }}
+          />
         )}
 
         {!esOperador && item.id === '16' && (
-          <View style={styles.metricsContainer}>
-            {/* Total enviados */}
-            <Text style={styles.metricSubtle}>Total enviados: {totalesSms.totalSmsEnviados || 0}</Text>
-
-            {/* Mini gráfico: Exitosos / Fallidos / Pendientes */}
-            {(() => {
-              const e = totalesSms.smsExitosos || 0;
-              const f = totalesSms.smsFallidos || 0;
-              const p = totalesSms.smsPendientes || 0;
-              const total = e + f + p;
-              return (
-                <View style={styles.miniBarTrack}>
-                  {total > 0 ? (
-                    <>
-                      {e > 0 && (<View style={[styles.miniBarSegmentActive, { flex: e }]} />)}
-                      {f > 0 && (<View style={[styles.miniBarSegmentError, { flex: f }]} />)}
-                      {p > 0 && (<View style={[styles.miniBarSegmentSuspended, { flex: p }]} />)}
-                    </>
-                  ) : (
-                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
-                  )}
-                </View>
-              );
-            })()}
-
-            {/* Tasa de éxito y actividad */}
-            <View style={styles.metricGroup}>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotActive]} />
-                <Text style={styles.metricLabel}>Tasa de éxito</Text>
-                {(() => {
-                  const pct = Number(totalesSms.estadisticasEnvio?.tasaExito || 0);
-                  const stylePct = pct >= 90
-                    ? [styles.metricValue, styles.metricValueSuccess]
-                    : (pct <= 50 ? [styles.metricValue, styles.metricValueWarning] : styles.metricValue);
-                  return (
-                    <Text style={stylePct}>
-                      {pct.toFixed(2)}%
-                    </Text>
-                  );
-                })()}
-              </View>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotInfo]} />
-                <Text style={styles.metricLabel}>Costo total</Text>
-                <Text style={styles.metricValue}>
-                  ${Number(totalesSms.resumenFinanciero?.costoTotal || 0).toLocaleString()}
-                </Text>
-              </View>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotWarning]} />
-                <Text style={styles.metricLabel}>Entrantes</Text>
-                <Text style={styles.metricValue}>{totalesSms.interactividad?.mensajesEntrantes || 0}</Text>
-              </View>
-            </View>
-
-            {/* Actividad reciente */}
-            <View style={styles.metricGroup}>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotInactive]} />
-                <Text style={styles.metricLabel}>Este mes</Text>
-                <Text style={styles.metricValue}>{totalesSms.estadisticasTiempo?.smsEsteMes || 0}</Text>
-              </View>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotInactive]} />
-                <Text style={styles.metricLabel}>Hoy</Text>
-                <Text style={styles.metricValue}>{totalesSms.estadisticasTiempo?.smsHoy || 0}</Text>
-              </View>
-            </View>
-          </View>
+          <SmsSummaryCard
+            totalEnviados={totalesSms.totalSmsEnviados || 0}
+            tasaExito={Number(totalesSms.estadisticasEnvio?.tasaExito || 0)}
+            costoTotal={Number(totalesSms.resumenFinanciero?.costoTotal || 0)}
+            entrantes={totalesSms.interactividad?.mensajesEntrantes || 0}
+            enviadosEsteMes={totalesSms.estadisticasTiempo?.smsEsteMes || 0}
+            enviadosHoy={totalesSms.estadisticasTiempo?.smsHoy || 0}
+            theme={{ styles, isDarkMode }}
+          />
         )}
 
         {!esOperador && item.id === '17' && (
-          <View style={styles.metricsContainer}>
-            {/* Total instalaciones */}
-            <Text style={styles.metricSubtle}>Total: {totalesInst.totalInstalaciones || 0}</Text>
-
-            {/* Mini gráfico: conUbicacion / sinUbicacion (fallback a equipos configurados) */}
-            {(() => {
-              const a = totalesInst.tracking?.conUbicacion ?? 0;
-              const b = totalesInst.tracking?.sinUbicacion ?? 0;
-              const useTracking = (a + b) > 0;
-              const conf = totalesInst.equipos?.configuradas ?? 0;
-              const nconf = totalesInst.equipos?.sinConfig ?? 0;
-              const total = useTracking ? (a + b) : (conf + nconf);
-              return (
-                <View style={styles.miniBarTrack}>
-                  {total > 0 ? (
-                    <>
-                      {useTracking ? (
-                        <>
-                          {a > 0 && (<View style={[styles.miniBarSegmentActive, { flex: a }]} />)}
-                          {b > 0 && (<View style={[styles.miniBarSegmentSuspended, { flex: b }]} />)}
-                        </>
-                      ) : (
-                        <>
-                          {conf > 0 && (<View style={[styles.miniBarSegmentActive, { flex: conf }]} />)}
-                          {nconf > 0 && (<View style={[styles.miniBarSegmentSuspended, { flex: nconf }]} />)}
-                        </>
-                      )}
-                    </>
-                  ) : (
-                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
-                  )}
-                </View>
-              );
-            })()}
-
-            {/* Actividad reciente */}
-            <View style={styles.metricGroup}>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotInfo]} />
-                <Text style={styles.metricLabel}>Este mes</Text>
-                <Text style={styles.metricValue}>{totalesInst.estadisticasTiempo?.instalacionesEsteMes || 0}</Text>
-              </View>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotInactive]} />
-                <Text style={styles.metricLabel}>Hoy</Text>
-                <Text style={styles.metricValue}>{totalesInst.estadisticasTiempo?.instalacionesHoy || 0}</Text>
-              </View>
-            </View>
-          </View>
+          <InstallationsSummaryCard
+            totalInstalaciones={totalesInst.totalInstalaciones || 0}
+            instalacionesMes={totalesInst.estadisticasTiempo?.instalacionesEsteMes || 0}
+            instalacionesHoy={totalesInst.estadisticasTiempo?.instalacionesHoy || 0}
+            theme={{ styles, isDarkMode }}
+          />
         )}
 
-        {!esOperador && item.id === '6' && (
-          <View style={styles.metricsContainer}>
-            {/* Total usuarios */}
-            <Text style={styles.metricSubtle}>Total: {totalesUsr.totalUsuarios || 0}</Text>
-
-            {/* Mini gráfico: Activos / Inactivos */}
-            {(() => {
-              const a = totalesUsr.activos || 0;
-              const i = totalesUsr.inactivos || 0;
-              const total = a + i;
-              return (
-                <View style={styles.miniBarTrack}>
-                  {total > 0 ? (
-                    <>
-                      {a > 0 && (<View style={[styles.miniBarSegmentActive, { flex: a }]} />)}
-                      {i > 0 && (<View style={[styles.miniBarSegmentInactive, { flex: i }]} />)}
-                    </>
-                  ) : (
-                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
-                  )}
-                </View>
-              );
-            })()}
-
-            {/* Activos e Inactivos */}
-            <View style={styles.metricGroup}>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotActive]} />
-                <Text style={styles.metricLabel}>Activos</Text>
-                <Text style={styles.metricValue}>{totalesUsr.activos || 0}</Text>
-              </View>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotInactive]} />
-                <Text style={styles.metricLabel}>Inactivos</Text>
-                <Text style={styles.metricValue}>{totalesUsr.inactivos || 0}</Text>
-              </View>
-            </View>
-
-            {/* Top Roles (si hay datos de roles) */}
-            {(() => {
-              const roles = totalesUsr.roles || {};
-              const rolesArray = Object.entries(roles)
-                .map(([rol, cantidad]) => ({ rol, cantidad: Number(cantidad) }))
-                .sort((a, b) => b.cantidad - a.cantidad)
-                .slice(0, 3); // Top 3
-
-              if (rolesArray.length === 0) return null;
-
-              const totalUsr = totalesUsr.totalUsuarios || 0;
-
-              return (
-                <>
-                  <View style={styles.divider} />
-                  <View style={styles.metricGroup}>
-                    <View style={styles.metricRow}>
-                      <Icon name="group" size={14} color={isDarkMode ? '#60A5FA' : '#3B82F6'} />
-                      <Text style={styles.metricLabel}>Top Roles</Text>
-                    </View>
-                    {rolesArray.map((item, idx) => {
-                      const pct = totalUsr > 0 ? (item.cantidad / totalUsr) * 100 : 0;
-                      return (
-                        <View key={`rol-${idx}`} style={styles.metricRow}>
-                          <View style={[
-                            styles.statusDot,
-                            idx === 0 ? styles.statusDotActive : styles.statusDotInfo,
-                          ]} />
-                          <Text style={styles.metricLabel}>{item.rol}</Text>
-                          <Text style={styles.metricValue}>
-                            {item.cantidad} ({pct.toFixed(0)}%)
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </>
-              );
-            })()}
-          </View>
-        )}
+        {!esOperador && item.id === '6' && (() => {
+          const rolesEntries = Object.entries(totalesUsr.roles || {}).map(([nombre, cantidad]) => ({
+            nombre,
+            cantidad: Number(cantidad) || 0,
+          }));
+          return (
+            <UsersSummaryCard
+              totalUsuarios={totalesUsr.totalUsuarios || 0}
+              activos={totalesUsr.activos || 0}
+              inactivos={totalesUsr.inactivos || 0}
+              rolesTop={rolesEntries}
+              theme={{ styles, isDarkMode }}
+            />
+          );
+        })()}
 
         {!esOperador && item.id === '3' && (
-          <View style={styles.metricsContainer}>
-            {/* Total planes y suscripciones */}
-            <Text style={styles.metricSubtle}>
-              Planes: {totalesServ.totalServicios || 0} • Suscripciones: {totalesServ.totalSuscripciones || 0}
-            </Text>
-
-            {/* Mini gráfico: Servicios con uso / sin uso */}
-            {(() => {
-              const conUso = totalesServ.estadisticas?.serviciosConUso || 0;
-              const sinUso = totalesServ.estadisticas?.serviciosSinUso || 0;
-              const total = conUso + sinUso;
-              return (
-                <View style={styles.miniBarTrack}>
-                  {total > 0 ? (
-                    <>
-                      {conUso > 0 && (<View style={[styles.miniBarSegmentActive, { flex: conUso }]} />)}
-                      {sinUso > 0 && (<View style={[styles.miniBarSegmentInactive, { flex: sinUso }]} />)}
-                    </>
-                  ) : (
-                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
-                  )}
-                </View>
-              );
-            })()}
-
-            {/* Precio promedio e ingreso mensual */}
-            <View style={styles.metricGroup}>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotInfo]} />
-                <Text style={styles.metricLabel}>Precio prom.</Text>
-                <Text style={styles.metricValue}>
-                  ${Number(totalesServ.precioPromedio || 0).toFixed(2)}
-                </Text>
-              </View>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotActive]} />
-                <Text style={styles.metricLabel}>Ingreso mensual</Text>
-                <Text style={[styles.metricValue, styles.metricValueSuccess]}>
-                  ${Number(totalesServ.ingresoEstimadoMensual || 0).toLocaleString()}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.divider} />
-
-            {/* Servicio más popular */}
-            <View style={styles.metricGroup}>
-              {totalesServ.estadisticas?.servicioMasPopular ? (
-                <>
-                  <View style={styles.metricRow}>
-                    <Icon name="star" size={14} color={isDarkMode ? '#FCD34D' : '#F59E0B'} />
-                    <Text style={styles.metricLabel}>Más popular</Text>
-                  </View>
-                  <View style={styles.metricRow}>
-                    <Text style={[styles.metricLabel, { fontSize: 11, opacity: 0.9 }]}>
-                      {totalesServ.estadisticas.servicioMasPopular.nombre}
-                    </Text>
-                    <Text style={styles.metricValue}>
-                      {totalesServ.estadisticas.servicioMasPopular.suscripciones} suscr.
-                    </Text>
-                  </View>
-                </>
-              ) : (
-                <View style={styles.metricRow}>
-                  <Icon name="info" size={14} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-                  <Text style={[styles.metricLabel, { opacity: 0.6 }]}>Sin datos de popularidad</Text>
-                </View>
-              )}
-            </View>
-          </View>
+          <ServicesSummaryCard
+            totalPlanes={totalesServ.totalServicios || 0}
+            totalSuscripciones={totalesServ.totalSuscripciones || 0}
+            precioPromedio={Number(totalesServ.precioPromedio || 0)}
+            ingresoMensual={Number(totalesServ.ingresoEstimadoMensual || 0)}
+            planMasPopular={totalesServ.estadisticas?.servicioMasPopular || null}
+            theme={{ styles, isDarkMode }}
+          />
         )}
 
         {!esOperador && item.id === '10' && (
-          <View style={styles.metricsContainer}>
-            {/* Total configuraciones */}
-            <Text style={styles.metricSubtle}>Total: {totalesCfg.totalConfiguraciones || 0}</Text>
-
-            {/* Mini gráfico: Activas / Incompletas / Sin config */}
-            {(() => {
-              const act = totalesCfg.configuracionesActivas || 0;
-              const inc = totalesCfg.configuracionesIncompletas || 0;
-              const total = totalesCfg.totalConfiguraciones || 0;
-              const sin = Math.max(total - act - inc, 0);
-              const sum = act + inc + sin;
-              return (
-                <View style={styles.miniBarTrack}>
-                  {sum > 0 ? (
-                    <>
-                      {act > 0 && (<View style={[styles.miniBarSegmentActive, { flex: act }]} />)}
-                      {inc > 0 && (<View style={[styles.miniBarSegmentSuspended, { flex: inc }]} />)}
-                      {sin > 0 && (<View style={[styles.miniBarSegmentError, { flex: sin }]} />)}
-                    </>
-                  ) : (
-                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
-                  )}
-                </View>
-              );
-            })()}
-
-            {/* Eficiencia y actividad */}
-            <View style={styles.metricGroup}>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotActive]} />
-                <Text style={styles.metricLabel}>Eficiencia</Text>
-                {(() => {
-                  const pct = Number(totalesCfg.configuracionRed?.porcentajeConfigurado || 0);
-                  const stylePct = pct >= 95
-                    ? [styles.metricValue, styles.metricValueSuccess]
-                    : (pct <= 80 ? [styles.metricValue, styles.metricValueWarning] : styles.metricValue);
-                  return (
-                    <Text style={stylePct}>
-                      {pct.toFixed(2)}%
-                    </Text>
-                  );
-                })()}
-              </View>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotInfo]} />
-                <Text style={styles.metricLabel}>Este mes</Text>
-                <Text style={styles.metricValue}>{totalesCfg.estadisticasTiempo?.configuracionesEsteMes || 0}</Text>
-              </View>
-            </View>
-
-            {/* Distribución por router (Top 3) */}
-            {totalesCfg.routersTop && totalesCfg.routersTop.length > 0 && (
-              <View style={styles.metricGroup}>
-                {totalesCfg.routersTop.map((r, idx) => (
-                  <View key={`router-row-${idx}`} style={styles.metricRow}>
-                    <View style={[
-                      styles.statusDot,
-                      (idx === 0 && r.pct >= 60) ? styles.statusDotWarning : styles.statusDotInfo,
-                    ]} />
-                    <Text style={styles.metricLabel}>{r.name}</Text>
-                    <Text style={r.pct >= 60 ? [styles.metricValue, styles.metricValueWarning] : styles.metricValue}>
-                      {r.count} ({r.pct.toFixed(1)}%)
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
+          <ConfigurationsSummaryCard
+            totalConfiguraciones={totalesCfg.totalConfiguraciones || 0}
+            eficiencia={Number(totalesCfg.configuracionRed?.porcentajeConfigurado || 0)}
+            configuracionesEsteMes={totalesCfg.estadisticasTiempo?.configuracionesEsteMes || 0}
+            routersTop={totalesCfg.routersTop || []}
+            theme={{ styles, isDarkMode }}
+          />
         )}
 
         {!esOperador && item.id === '11' && (
-          <View style={styles.metricsContainer}>
-            {/* Total órdenes */}
-            <Text style={styles.metricSubtle}>Total: {totalesOrd.totalOrdenes || 0}</Text>
-
-            {/* Mini gráfico: Completadas / Pendientes / Canceladas */}
-            {(() => {
-              const comp = totalesOrd.ordenesCompletadas || 0;
-              const pend = totalesOrd.ordenesPendientes || 0;
-              const canc = totalesOrd.ordenesCanceladas || 0;
-              const total = comp + pend + canc;
-              return (
-                <View style={styles.miniBarTrack}>
-                  {total > 0 ? (
-                    <>
-                      {comp > 0 && (<View style={[styles.miniBarSegmentActive, { flex: comp }]} />)}
-                      {pend > 0 && (<View style={[styles.miniBarSegmentSuspended, { flex: pend }]} />)}
-                      {canc > 0 && (<View style={[styles.miniBarSegmentError, { flex: canc }]} />)}
-                    </>
-                  ) : (
-                    <View style={[styles.miniBarSegmentInactive, { flex: 1, opacity: 0.35 }]} />
-                  )}
-                </View>
-              );
-            })()}
-
-            {/* Tasa completado y Promedio resolución */}
-            <View style={styles.metricGroup}>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotActive]} />
-                <Text style={styles.metricLabel}>Tasa completado</Text>
-                {(() => {
-                  const pct = Number(totalesOrd.estadisticasRendimiento?.tasaCompletado || 0);
-                  const stylePct = pct >= 80
-                    ? [styles.metricValue, styles.metricValueSuccess]
-                    : (pct <= 50 ? [styles.metricValue, styles.metricValueWarning] : styles.metricValue);
-                  return (
-                    <Text style={stylePct}>
-                      {pct.toFixed(2)}%
-                    </Text>
-                  );
-                })()}
-              </View>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotInfo]} />
-                <Text style={styles.metricLabel}>Prom. resolución</Text>
-                {(() => {
-                  const horas = Number(totalesOrd.estadisticasRendimiento?.horasPromedioResolucion || 0);
-                  const dias = horas / 24;
-                  return (
-                    <Text style={styles.metricValue}>
-                      {dias >= 1 ? `${dias.toFixed(2)} días` : `${horas.toFixed(1)} h`}
-                    </Text>
-                  );
-                })()}
-              </View>
-            </View>
-
-            {/* Backlog y actividad */}
-            <View style={styles.metricGroup}>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotWarning]} />
-                <Text style={styles.metricLabel}>Backlog</Text>
-                <Text style={[styles.metricValue, styles.metricValueWarning]}>{totalesOrd.ordenesPendientes || 0}</Text>
-              </View>
-              <View style={styles.metricRow}>
-                <View style={[styles.statusDot, styles.statusDotInactive]} />
-                <Text style={styles.metricLabel}>Este mes</Text>
-                <Text style={styles.metricValue}>{totalesOrd.estadisticasTiempo?.ordenesEsteMes || 0}</Text>
-              </View>
-            </View>
-          </View>
+          <ServiceOrdersSummaryCard
+            totalOrdenes={totalesOrd.totalOrdenes || 0}
+            tasaCompletado={Number(totalesOrd.estadisticasRendimiento?.tasaCompletado || 0)}
+            promedioResolucionDias={Number(totalesOrd.estadisticasRendimiento?.horasPromedioResolucion || 0) / 24}
+            backlog={totalesOrd.ordenesPendientes || 0}
+            ordenesEsteMes={totalesOrd.estadisticasTiempo?.ordenesEsteMes || 0}
+            theme={{ styles, isDarkMode }}
+          />
         )}
         {/* Sin badges: se mantiene el texto original de métricas dentro del título */}
         {isDisabled && item.id === '13' && (
