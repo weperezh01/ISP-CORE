@@ -1482,7 +1482,7 @@ const getStyles = (isDarkMode) => StyleSheet.create({
         paddingVertical: 4,
     },
     servicesPlanLeft: {
-        flex: 1.4,
+        flex: 1.2,
         flexDirection: 'row',
         alignItems: 'center',
     },
@@ -1499,27 +1499,30 @@ const getStyles = (isDarkMode) => StyleSheet.create({
         flex: 1,
     },
     servicesPlanCenter: {
-        flex: 1,
+        flex: 0.75,
         alignItems: 'flex-end',
+        marginRight: 8,
     },
     servicesPlanPrice: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '500',
         color: isDarkMode ? '#6EE7B7' : '#047857',
     },
     servicesPlanRight: {
-        flex: 1,
-        alignItems: 'flex-end',
+        flex: 1.1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
     },
     servicesPlanSubs: {
-        fontSize: 12,
+        fontSize: 11,
         color: isDarkMode ? colors.gray[200] : colors.gray[800],
         fontWeight: '500',
     },
     servicesPlanPct: {
         fontSize: 10,
         color: isDarkMode ? colors.gray[400] : colors.gray[600],
-        marginTop: 2,
+        marginLeft: 4,
     },
 
     // Users summary card
