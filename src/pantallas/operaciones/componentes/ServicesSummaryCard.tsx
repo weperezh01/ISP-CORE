@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import getStyles from '../IspDetailsStyles';
@@ -53,11 +53,10 @@ const ServicesSummaryCard: React.FC<ServicesSummaryCardProps> = ({
   const popularPct = suscripciones > 0 ? (popularSubs / suscripciones) * 100 : 0;
   const arpu = suscripciones > 0 ? ingreso / suscripciones : 0;
 
-  // Ordenar planes por suscripciones descendente y tomar top 4
+  // Ordenar planes por suscripciones descendente
   const planesOrdenados = (planesDetalle || [])
     .slice()
     .sort((a, b) => b.suscripciones - a.suscripciones);
-  const planesTop = planesOrdenados.slice(0, 4);
 
   const formatCurrency = (value: number) => {
     if (!Number.isFinite(value)) return '$0';
@@ -164,48 +163,54 @@ const ServicesSummaryCard: React.FC<ServicesSummaryCardProps> = ({
         <View style={styles.servicesPlansSection}>
           <View style={styles.servicesPlansHeader}>
             <Text style={styles.servicesPlansTitle}>Detalle de planes</Text>
-            {planesTop.length > 0 && (
+            {planesOrdenados.length > 0 && (
               <Text style={styles.servicesPlansSubtitle}>
-                {`${planesTop.length} de ${planes} planes`}
+                {planesOrdenados.length} {planesOrdenados.length === 1 ? 'plan' : 'planes'}
               </Text>
             )}
           </View>
 
-          {planesTop.length > 0 ? (
-            planesTop.map((plan) => {
-              const planPct = suscripciones > 0 ? (plan.suscripciones / suscripciones) * 100 : 0;
-              return (
-                <View key={plan.id} style={styles.servicesPlanRow}>
-                  <View style={styles.servicesPlanLeft}>
-                    <View style={styles.servicesPlanBullet} />
-                    <Text
-                      style={styles.servicesPlanName}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
-                      {plan.nombre}
-                    </Text>
-                  </View>
-
-                  <View style={styles.servicesPlanCenter}>
-                    <Text style={styles.servicesPlanPrice}>
-                      {formatCurrency(plan.precio)}
-                    </Text>
-                  </View>
-
-                  <View style={styles.servicesPlanRight}>
-                    <Text style={styles.servicesPlanSubs}>
-                      {plan.suscripciones} suscr.
-                    </Text>
-                    {suscripciones > 0 && (
-                      <Text style={styles.servicesPlanPct}>
-                        {planPct.toFixed(1)}%
+          {planesOrdenados.length > 0 ? (
+            <ScrollView
+              style={{ maxHeight: 240 }}
+              nestedScrollEnabled={true}
+              showsVerticalScrollIndicator={true}
+            >
+              {planesOrdenados.map((plan) => {
+                const planPct = suscripciones > 0 ? (plan.suscripciones / suscripciones) * 100 : 0;
+                return (
+                  <View key={plan.id} style={styles.servicesPlanRow}>
+                    <View style={styles.servicesPlanLeft}>
+                      <View style={styles.servicesPlanBullet} />
+                      <Text
+                        style={styles.servicesPlanName}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {plan.nombre}
                       </Text>
-                    )}
+                    </View>
+
+                    <View style={styles.servicesPlanCenter}>
+                      <Text style={styles.servicesPlanPrice}>
+                        {formatCurrency(plan.precio)}
+                      </Text>
+                    </View>
+
+                    <View style={styles.servicesPlanRight}>
+                      <Text style={styles.servicesPlanSubs}>
+                        {plan.suscripciones} suscr.
+                      </Text>
+                      {suscripciones > 0 && (
+                        <Text style={styles.servicesPlanPct}>
+                          {planPct.toFixed(1)}%
+                        </Text>
+                      )}
+                    </View>
                   </View>
-                </View>
-              );
-            })
+                );
+              })}
+            </ScrollView>
           ) : (
             <Text style={styles.servicesPopularEmpty}>
               No hay información de planes disponible
