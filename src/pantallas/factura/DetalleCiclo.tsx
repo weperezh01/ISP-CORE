@@ -71,11 +71,40 @@ const DetalleCiclo = ({ route }) => {
     const [facturasCobradas, setFacturasCobradas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [estadisticasConexiones, setEstadisticasConexiones] = useState({
-        totalConexiones: 0,
-        conexionesActivas: 0,
-        conexionesSuspendidas: 0,
-        conexionesInactivas: 0,
-        detalleEstados: []
+        resumen: {
+            totalConexiones: 0,
+            conexionesActivas: 0,
+            conexionesSuspendidas: 0,
+            conexionesInactivas: 0,
+            conexionesMorosas: 0,
+            conexionesAlDia: 0,
+            porcentajeActivas: 0,
+            porcentajeSuspendidas: 0,
+            porcentajeInactivas: 0
+        },
+        detalleEstados: [],
+        financiero: {
+            ingresosPotencialesMensual: 0,
+            ingresosPerdidosPorSuspension: 0,
+            ingresosPerdidosPorInactivas: 0,
+            porcentajeIngresosPerdidos: 0
+        },
+        morosidad: {
+            totalMorosos: 0,
+            porcentajeMorosos: 0,
+            deudaTotal: 0,
+            promedioDiasMora: 0
+        },
+        tendencias: {
+            cambioVsCicloAnterior: {
+                totalConexiones: 0,
+                porcentajeCambio: 0,
+                direccion: 'sin_cambio'
+            },
+            nuevosCiclo: 0,
+            bajasCiclo: 0
+        },
+        alertas: []
     });
 
     // Estados para permisos
@@ -634,7 +663,7 @@ const DetalleCiclo = ({ route }) => {
                             </View>
                         </View>
 
-                        {/* Estadísticas de Conexiones */}
+                        {/* Estadísticas de Conexiones - MEJORADA */}
                         <TouchableOpacity
                             style={styles.card}
                             onPress={() => navigation.navigate('ConexionesCicloScreen', { id_ciclo: ciclo.id_ciclo })}
@@ -646,35 +675,365 @@ const DetalleCiclo = ({ route }) => {
                                 </View>
                                 <View style={styles.cardHeaderContent}>
                                     <Text style={styles.cardTitle}>Estadísticas de Conexiones</Text>
-                                    <Text style={styles.cardSubtitle}>Estado de las conexiones del ciclo</Text>
+                                    <Text style={styles.cardSubtitle}>Análisis completo del ciclo</Text>
                                 </View>
                                 <Icon name="chevron-right" size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
                             </View>
 
+                            {/* Alertas */}
+                            {estadisticasConexiones.alertas && estadisticasConexiones.alertas.length > 0 && (
+                                <View style={{
+                                    paddingHorizontal: 20,
+                                    paddingTop: 16,
+                                    gap: 8
+                                }}>
+                                    {estadisticasConexiones.alertas.map((alerta, index) => (
+                                        <View
+                                            key={index}
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                backgroundColor:
+                                                    alerta.tipo === 'error' ? (isDarkMode ? '#7F1D1D' : '#FEE2E2') :
+                                                    alerta.tipo === 'warning' ? (isDarkMode ? '#78350F' : '#FEF3C7') :
+                                                    alerta.tipo === 'success' ? (isDarkMode ? '#064E3B' : '#D1FAE5') :
+                                                    (isDarkMode ? '#1E3A8A' : '#DBEAFE'),
+                                                paddingHorizontal: 12,
+                                                paddingVertical: 8,
+                                                borderRadius: 8,
+                                                borderLeftWidth: 3,
+                                                borderLeftColor:
+                                                    alerta.tipo === 'error' ? '#EF4444' :
+                                                    alerta.tipo === 'warning' ? '#F59E0B' :
+                                                    alerta.tipo === 'success' ? '#10B981' :
+                                                    '#3B82F6'
+                                            }}
+                                        >
+                                            <Icon
+                                                name={
+                                                    alerta.tipo === 'error' ? 'error' :
+                                                    alerta.tipo === 'warning' ? 'warning' :
+                                                    alerta.tipo === 'success' ? 'check-circle' :
+                                                    'info'
+                                                }
+                                                size={18}
+                                                color={
+                                                    alerta.tipo === 'error' ? '#EF4444' :
+                                                    alerta.tipo === 'warning' ? '#F59E0B' :
+                                                    alerta.tipo === 'success' ? '#10B981' :
+                                                    '#3B82F6'
+                                                }
+                                                style={{ marginRight: 8 }}
+                                            />
+                                            <Text style={{
+                                                flex: 1,
+                                                fontSize: 13,
+                                                fontWeight: '500',
+                                                color:
+                                                    alerta.tipo === 'error' ? (isDarkMode ? '#FCA5A5' : '#991B1B') :
+                                                    alerta.tipo === 'warning' ? (isDarkMode ? '#FCD34D' : '#92400E') :
+                                                    alerta.tipo === 'success' ? (isDarkMode ? '#6EE7B7' : '#065F46') :
+                                                    (isDarkMode ? '#93C5FD' : '#1E40AF')
+                                            }}>
+                                                {alerta.mensaje}
+                                            </Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+
+                            {/* Resumen Principal con Porcentajes */}
                             <View style={styles.statusContainer}>
                                 <View style={styles.statusItem}>
-                                    <Text style={styles.statusNumber}>{estadisticasConexiones.totalConexiones}</Text>
+                                    <Text style={styles.statusNumber}>
+                                        {estadisticasConexiones.resumen?.totalConexiones || 0}
+                                    </Text>
                                     <Text style={styles.statusLabel}>Total</Text>
                                 </View>
                                 <View style={styles.statusItem}>
                                     <Text style={[styles.statusNumber, { color: '#10B981' }]}>
-                                        {estadisticasConexiones.conexionesActivas}
+                                        {estadisticasConexiones.resumen?.conexionesActivas || 0}
                                     </Text>
                                     <Text style={styles.statusLabel}>Activas</Text>
+                                    <Text style={{
+                                        fontSize: 11,
+                                        color: '#10B981',
+                                        fontWeight: '600',
+                                        marginTop: 2
+                                    }}>
+                                        {estadisticasConexiones.resumen?.porcentajeActivas?.toFixed(1) || 0}%
+                                    </Text>
                                 </View>
                                 <View style={styles.statusItem}>
                                     <Text style={[styles.statusNumber, { color: '#F59E0B' }]}>
-                                        {estadisticasConexiones.conexionesSuspendidas}
+                                        {estadisticasConexiones.resumen?.conexionesSuspendidas || 0}
                                     </Text>
                                     <Text style={styles.statusLabel}>Suspendidas</Text>
+                                    <Text style={{
+                                        fontSize: 11,
+                                        color: '#F59E0B',
+                                        fontWeight: '600',
+                                        marginTop: 2
+                                    }}>
+                                        {estadisticasConexiones.resumen?.porcentajeSuspendidas?.toFixed(1) || 0}%
+                                    </Text>
                                 </View>
                                 <View style={styles.statusItem}>
                                     <Text style={[styles.statusNumber, { color: '#6B7280' }]}>
-                                        {estadisticasConexiones.conexionesInactivas}
+                                        {estadisticasConexiones.resumen?.conexionesInactivas || 0}
                                     </Text>
                                     <Text style={styles.statusLabel}>Inactivas</Text>
+                                    <Text style={{
+                                        fontSize: 11,
+                                        color: '#6B7280',
+                                        fontWeight: '600',
+                                        marginTop: 2
+                                    }}>
+                                        {estadisticasConexiones.resumen?.porcentajeInactivas?.toFixed(1) || 0}%
+                                    </Text>
                                 </View>
                             </View>
+
+                            {/* Información Financiera */}
+                            {estadisticasConexiones.financiero && (
+                                <View style={{
+                                    paddingHorizontal: 20,
+                                    paddingVertical: 16,
+                                    borderTopWidth: 1,
+                                    borderTopColor: isDarkMode ? '#374151' : '#E5E7EB'
+                                }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                                        <Icon name="attach-money" size={18} color={isDarkMode ? '#10B981' : '#059669'} />
+                                        <Text style={{
+                                            fontSize: 14,
+                                            fontWeight: '600',
+                                            color: isDarkMode ? '#F3F4F6' : '#1F2937',
+                                            marginLeft: 6
+                                        }}>
+                                            Impacto Financiero
+                                        </Text>
+                                    </View>
+
+                                    <View style={{ gap: 8 }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Text style={{ fontSize: 13, color: isDarkMode ? '#D1D5DB' : '#4B5563' }}>
+                                                Ingresos Potenciales:
+                                            </Text>
+                                            <Text style={{
+                                                fontSize: 15,
+                                                fontWeight: '700',
+                                                color: isDarkMode ? '#10B981' : '#059669'
+                                            }}>
+                                                {formatMoney(estadisticasConexiones.financiero.ingresosPotencialesMensual || 0)}
+                                            </Text>
+                                        </View>
+
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Text style={{ fontSize: 13, color: isDarkMode ? '#D1D5DB' : '#4B5563' }}>
+                                                Pérdidas por Suspensión:
+                                            </Text>
+                                            <Text style={{
+                                                fontSize: 14,
+                                                fontWeight: '600',
+                                                color: '#F59E0B'
+                                            }}>
+                                                {formatMoney(estadisticasConexiones.financiero.ingresosPerdidosPorSuspension || 0)}
+                                            </Text>
+                                        </View>
+
+                                        {estadisticasConexiones.financiero.porcentajeIngresosPerdidos > 0 && (
+                                            <View style={{
+                                                marginTop: 4,
+                                                paddingHorizontal: 10,
+                                                paddingVertical: 6,
+                                                backgroundColor: isDarkMode ? '#78350F' : '#FEF3C7',
+                                                borderRadius: 6
+                                            }}>
+                                                <Text style={{
+                                                    fontSize: 12,
+                                                    fontWeight: '600',
+                                                    color: isDarkMode ? '#FCD34D' : '#92400E',
+                                                    textAlign: 'center'
+                                                }}>
+                                                    {estadisticasConexiones.financiero.porcentajeIngresosPerdidos.toFixed(1)}% de ingresos en riesgo
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Morosidad */}
+                            {estadisticasConexiones.morosidad && estadisticasConexiones.morosidad.totalMorosos > 0 && (
+                                <View style={{
+                                    paddingHorizontal: 20,
+                                    paddingVertical: 16,
+                                    borderTopWidth: 1,
+                                    borderTopColor: isDarkMode ? '#374151' : '#E5E7EB'
+                                }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                                        <Icon name="account-balance-wallet" size={18} color="#EF4444" />
+                                        <Text style={{
+                                            fontSize: 14,
+                                            fontWeight: '600',
+                                            color: isDarkMode ? '#F3F4F6' : '#1F2937',
+                                            marginLeft: 6
+                                        }}>
+                                            Morosidad
+                                        </Text>
+                                    </View>
+
+                                    <View style={{ gap: 8 }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                            <Text style={{ fontSize: 13, color: isDarkMode ? '#D1D5DB' : '#4B5563' }}>
+                                                Conexiones Morosas:
+                                            </Text>
+                                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#EF4444' }}>
+                                                {estadisticasConexiones.morosidad.totalMorosos} ({estadisticasConexiones.morosidad.porcentajeMorosos.toFixed(1)}%)
+                                            </Text>
+                                        </View>
+
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                            <Text style={{ fontSize: 13, color: isDarkMode ? '#D1D5DB' : '#4B5563' }}>
+                                                Deuda Total:
+                                            </Text>
+                                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#DC2626' }}>
+                                                {formatMoney(estadisticasConexiones.morosidad.deudaTotal || 0)}
+                                            </Text>
+                                        </View>
+
+                                        {estadisticasConexiones.morosidad.promedioDiasMora > 0 && (
+                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                                <Text style={{ fontSize: 13, color: isDarkMode ? '#D1D5DB' : '#4B5563' }}>
+                                                    Promedio de Mora:
+                                                </Text>
+                                                <Text style={{ fontSize: 14, fontWeight: '600', color: isDarkMode ? '#FCA5A5' : '#B91C1C' }}>
+                                                    {Math.round(estadisticasConexiones.morosidad.promedioDiasMora)} días
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Tendencias */}
+                            {estadisticasConexiones.tendencias && (
+                                <View style={{
+                                    paddingHorizontal: 20,
+                                    paddingVertical: 16,
+                                    borderTopWidth: 1,
+                                    borderTopColor: isDarkMode ? '#374151' : '#E5E7EB'
+                                }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                                        <Icon name="trending-up" size={18} color={isDarkMode ? '#3B82F6' : '#2563EB'} />
+                                        <Text style={{
+                                            fontSize: 14,
+                                            fontWeight: '600',
+                                            color: isDarkMode ? '#F3F4F6' : '#1F2937',
+                                            marginLeft: 6
+                                        }}>
+                                            Tendencias
+                                        </Text>
+                                    </View>
+
+                                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                                        {estadisticasConexiones.tendencias.nuevosCiclo > 0 && (
+                                            <View style={{
+                                                flex: 1,
+                                                backgroundColor: isDarkMode ? '#064E3B' : '#D1FAE5',
+                                                paddingHorizontal: 12,
+                                                paddingVertical: 10,
+                                                borderRadius: 8,
+                                                alignItems: 'center'
+                                            }}>
+                                                <Icon name="add-circle" size={20} color="#10B981" />
+                                                <Text style={{
+                                                    fontSize: 18,
+                                                    fontWeight: '700',
+                                                    color: '#10B981',
+                                                    marginTop: 4
+                                                }}>
+                                                    {estadisticasConexiones.tendencias.nuevosCiclo}
+                                                </Text>
+                                                <Text style={{
+                                                    fontSize: 11,
+                                                    color: isDarkMode ? '#6EE7B7' : '#065F46',
+                                                    marginTop: 2
+                                                }}>
+                                                    Nuevas
+                                                </Text>
+                                            </View>
+                                        )}
+
+                                        {estadisticasConexiones.tendencias.bajasCiclo > 0 && (
+                                            <View style={{
+                                                flex: 1,
+                                                backgroundColor: isDarkMode ? '#7F1D1D' : '#FEE2E2',
+                                                paddingHorizontal: 12,
+                                                paddingVertical: 10,
+                                                borderRadius: 8,
+                                                alignItems: 'center'
+                                            }}>
+                                                <Icon name="remove-circle" size={20} color="#EF4444" />
+                                                <Text style={{
+                                                    fontSize: 18,
+                                                    fontWeight: '700',
+                                                    color: '#EF4444',
+                                                    marginTop: 4
+                                                }}>
+                                                    {estadisticasConexiones.tendencias.bajasCiclo}
+                                                </Text>
+                                                <Text style={{
+                                                    fontSize: 11,
+                                                    color: isDarkMode ? '#FCA5A5' : '#991B1B',
+                                                    marginTop: 2
+                                                }}>
+                                                    Bajas
+                                                </Text>
+                                            </View>
+                                        )}
+
+                                        {estadisticasConexiones.tendencias.cambioVsCicloAnterior &&
+                                         estadisticasConexiones.tendencias.cambioVsCicloAnterior.direccion !== 'sin_cambio' && (
+                                            <View style={{
+                                                flex: 1,
+                                                backgroundColor:
+                                                    estadisticasConexiones.tendencias.cambioVsCicloAnterior.direccion === 'aumento'
+                                                        ? (isDarkMode ? '#1E3A8A' : '#DBEAFE')
+                                                        : (isDarkMode ? '#78350F' : '#FEF3C7'),
+                                                paddingHorizontal: 12,
+                                                paddingVertical: 10,
+                                                borderRadius: 8,
+                                                alignItems: 'center'
+                                            }}>
+                                                <Icon
+                                                    name={estadisticasConexiones.tendencias.cambioVsCicloAnterior.direccion === 'aumento' ? 'arrow-upward' : 'arrow-downward'}
+                                                    size={20}
+                                                    color={estadisticasConexiones.tendencias.cambioVsCicloAnterior.direccion === 'aumento' ? '#3B82F6' : '#F59E0B'}
+                                                />
+                                                <Text style={{
+                                                    fontSize: 16,
+                                                    fontWeight: '700',
+                                                    color: estadisticasConexiones.tendencias.cambioVsCicloAnterior.direccion === 'aumento' ? '#3B82F6' : '#F59E0B',
+                                                    marginTop: 4
+                                                }}>
+                                                    {estadisticasConexiones.tendencias.cambioVsCicloAnterior.porcentajeCambio?.toFixed(1) || 0}%
+                                                </Text>
+                                                <Text style={{
+                                                    fontSize: 11,
+                                                    color: estadisticasConexiones.tendencias.cambioVsCicloAnterior.direccion === 'aumento'
+                                                        ? (isDarkMode ? '#93C5FD' : '#1E40AF')
+                                                        : (isDarkMode ? '#FCD34D' : '#92400E'),
+                                                    marginTop: 2,
+                                                    textAlign: 'center'
+                                                }}>
+                                                    vs anterior
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                </View>
+                            )}
                         </TouchableOpacity>
 
                         {/* Información Financiera */}
