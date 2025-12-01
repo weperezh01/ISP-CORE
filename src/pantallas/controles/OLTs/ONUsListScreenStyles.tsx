@@ -53,6 +53,12 @@ export const getStyles = (isDarkMode) => StyleSheet.create({
         backgroundColor: isDarkMode ? colors.gray[900] : colors.gray[50],
     },
 
+    fixedSectionWrapper: {
+        backgroundColor: 'transparent',
+        overflow: 'hidden',
+        marginBottom: 16,
+    },
+
     // Header styles
     headerContainer: {
         paddingHorizontal: 20,

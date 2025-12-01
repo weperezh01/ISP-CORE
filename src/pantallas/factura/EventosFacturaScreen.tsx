@@ -170,6 +170,201 @@ const EventosFacturaScreen = ({ route, navigation }) => {
         };
     };
 
+    // Componente para mostrar detalles parseados del JSON
+    const EventExtraData = ({ rawJson }) => {
+        if (!rawJson || typeof rawJson !== 'string') return null;
+
+        try {
+            const data = JSON.parse(rawJson);
+
+            // Si el objeto está vacío, no mostrar nada
+            if (!data || typeof data !== 'object' || Object.keys(data).length === 0) return null;
+
+            const formatCurrency = (amount) => {
+                const num = parseFloat(amount);
+                if (isNaN(num)) return 'RD$0.00';
+                return `RD$${num.toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            };
+
+            // Detectar tipo de evento basado en las claves del JSON
+            const hasArticuloAgregado = 'id_producto_servicio' in data && 'descripcion' in data && 'precio_unitario' in data;
+            const hasArticulosEditados = 'articulos_modificados' in data || 'cambios_detallados' in data;
+
+            // Renderizar datos de artículo agregado
+            if (hasArticuloAgregado) {
+                return (
+                    <View style={styles.extraDataContainer}>
+                        <View style={styles.extraDataHeader}>
+                            <Icon name="info" size={14} color={isDarkMode ? '#60A5FA' : '#3B82F6'} />
+                            <Text style={[styles.extraDataTitle, { color: isDarkMode ? '#60A5FA' : '#3B82F6' }]}>
+                                Detalles del artículo
+                            </Text>
+                        </View>
+                        <View style={styles.extraDataContent}>
+                            {data.descripcion && (
+                                <View style={styles.extraDataRow}>
+                                    <Text style={[styles.extraDataBullet, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>•</Text>
+                                    <Text style={[styles.extraDataLabel, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+                                        Descripción:
+                                    </Text>
+                                    <Text style={[styles.extraDataValue, { color: isDarkMode ? '#D1D5DB' : '#374151' }]} numberOfLines={2}>
+                                        {data.descripcion}
+                                    </Text>
+                                </View>
+                            )}
+                            {data.cantidad !== undefined && (
+                                <View style={styles.extraDataRow}>
+                                    <Text style={[styles.extraDataBullet, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>•</Text>
+                                    <Text style={[styles.extraDataLabel, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+                                        Cantidad:
+                                    </Text>
+                                    <Text style={[styles.extraDataValue, { color: isDarkMode ? '#D1D5DB' : '#374151' }]}>
+                                        {data.cantidad}
+                                    </Text>
+                                </View>
+                            )}
+                            {data.precio_unitario !== undefined && (
+                                <View style={styles.extraDataRow}>
+                                    <Text style={[styles.extraDataBullet, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>•</Text>
+                                    <Text style={[styles.extraDataLabel, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+                                        Precio unitario:
+                                    </Text>
+                                    <Text style={[styles.extraDataValue, { color: isDarkMode ? '#D1D5DB' : '#374151' }]}>
+                                        {formatCurrency(data.precio_unitario)}
+                                    </Text>
+                                </View>
+                            )}
+                            {data.descuento !== undefined && (
+                                <View style={styles.extraDataRow}>
+                                    <Text style={[styles.extraDataBullet, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>•</Text>
+                                    <Text style={[styles.extraDataLabel, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+                                        Descuento:
+                                    </Text>
+                                    <Text style={[styles.extraDataValue, { color: isDarkMode ? '#D1D5DB' : '#374151' }]}>
+                                        {formatCurrency(data.descuento)}
+                                    </Text>
+                                </View>
+                            )}
+                            {data.total !== undefined && (
+                                <View style={styles.extraDataRow}>
+                                    <Text style={[styles.extraDataBullet, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>•</Text>
+                                    <Text style={[styles.extraDataLabel, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+                                        Total:
+                                    </Text>
+                                    <Text style={[styles.extraDataValue, { color: isDarkMode ? '#10B981' : '#059669', fontWeight: '600' }]}>
+                                        {formatCurrency(data.total)}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                );
+            }
+
+            // Renderizar datos de artículos editados
+            if (hasArticulosEditados) {
+                return (
+                    <View style={styles.extraDataContainer}>
+                        <View style={styles.extraDataHeader}>
+                            <Icon name="info" size={14} color={isDarkMode ? '#60A5FA' : '#3B82F6'} />
+                            <Text style={[styles.extraDataTitle, { color: isDarkMode ? '#60A5FA' : '#3B82F6' }]}>
+                                Resumen de cambios
+                            </Text>
+                        </View>
+                        <View style={styles.extraDataContent}>
+                            {data.articulos_modificados !== undefined && (
+                                <View style={styles.extraDataRow}>
+                                    <Text style={[styles.extraDataBullet, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>•</Text>
+                                    <Text style={[styles.extraDataLabel, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+                                        Artículos modificados:
+                                    </Text>
+                                    <Text style={[styles.extraDataValue, { color: isDarkMode ? '#D1D5DB' : '#374151' }]}>
+                                        {data.articulos_modificados}
+                                    </Text>
+                                </View>
+                            )}
+                            {data.monto_total_anterior !== undefined && (
+                                <View style={styles.extraDataRow}>
+                                    <Text style={[styles.extraDataBullet, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>•</Text>
+                                    <Text style={[styles.extraDataLabel, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+                                        Monto total anterior:
+                                    </Text>
+                                    <Text style={[styles.extraDataValue, { color: isDarkMode ? '#D1D5DB' : '#374151' }]}>
+                                        {formatCurrency(data.monto_total_anterior)}
+                                    </Text>
+                                </View>
+                            )}
+                            {data.monto_total_nuevo !== undefined && (
+                                <View style={styles.extraDataRow}>
+                                    <Text style={[styles.extraDataBullet, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>•</Text>
+                                    <Text style={[styles.extraDataLabel, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+                                        Monto total nuevo:
+                                    </Text>
+                                    <Text style={[styles.extraDataValue, { color: isDarkMode ? '#10B981' : '#059669', fontWeight: '600' }]}>
+                                        {formatCurrency(data.monto_total_nuevo)}
+                                    </Text>
+                                </View>
+                            )}
+
+                            {/* Cambios detallados si existen */}
+                            {data.cambios_detallados && Array.isArray(data.cambios_detallados) && data.cambios_detallados.length > 0 && (
+                                <>
+                                    <View style={styles.extraDataDivider} />
+                                    <Text style={[styles.extraDataSubtitle, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+                                        Cambios detallados:
+                                    </Text>
+                                    {data.cambios_detallados.map((cambio, index) => (
+                                        <View key={index} style={styles.extraDataChangeItem}>
+                                            <Text style={[styles.extraDataBullet, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>•</Text>
+                                            <Text style={[styles.extraDataValue, { color: isDarkMode ? '#D1D5DB' : '#374151', flex: 1 }]} numberOfLines={2}>
+                                                {cambio.descripcion || 'Sin descripción'}
+                                                {cambio.cantidad_anterior !== undefined && cambio.cantidad_nueva !== undefined && (
+                                                    <Text style={[styles.extraDataChange, { color: isDarkMode ? '#F59E0B' : '#D97706' }]}>
+                                                        {' — '}Cantidad: {parseFloat(cambio.cantidad_anterior).toFixed(2)} → {parseFloat(cambio.cantidad_nueva).toFixed(2)}
+                                                    </Text>
+                                                )}
+                                            </Text>
+                                        </View>
+                                    ))}
+                                </>
+                            )}
+                        </View>
+                    </View>
+                );
+            }
+
+            // Si no coincide con ningún formato conocido, mostrar mensaje genérico
+            return (
+                <View style={styles.extraDataContainer}>
+                    <View style={styles.extraDataHeader}>
+                        <Icon name="info" size={14} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                        <Text style={[styles.extraDataTitle, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+                            Detalles adicionales
+                        </Text>
+                    </View>
+                    <View style={styles.extraDataContent}>
+                        <Text style={[styles.extraDataValue, { color: isDarkMode ? '#9CA3AF' : '#6B7280', fontSize: 11, fontStyle: 'italic' }]}>
+                            Información técnica disponible
+                        </Text>
+                    </View>
+                </View>
+            );
+
+        } catch (error) {
+            // Si falla el parseo, mostrar mensaje
+            return (
+                <View style={styles.extraDataContainer}>
+                    <View style={styles.extraDataHeader}>
+                        <Icon name="info" size={14} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                        <Text style={[styles.extraDataTitle, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
+                            Detalles técnicos no disponibles
+                        </Text>
+                    </View>
+                </View>
+            );
+        }
+    };
+
     const renderItem = ({ item }) => {
         const { date, time } = formatDateTime(item.fecha_hora);
         const eventColor = getEventColor(item.tipo_evento);
@@ -213,14 +408,8 @@ const EventosFacturaScreen = ({ route, navigation }) => {
                         </Text>
                     </View>
 
-                    {item.detalles && (
-                        <View style={styles.metaRow}>
-                            <Icon name="info" size={16} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-                            <Text style={[styles.metaText, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
-                                {item.detalles}
-                            </Text>
-                        </View>
-                    )}
+                    {/* Detalles parseados del JSON */}
+                    {item.detalles && <EventExtraData rawJson={item.detalles} />}
                 </View>
             </View>
         );
@@ -478,6 +667,73 @@ const getStyles = (isDarkMode) => StyleSheet.create({
         fontWeight: '500',
         marginLeft: 8,
         flex: 1,
+    },
+
+    // Extra Data Styles (parsed JSON)
+    extraDataContainer: {
+        marginTop: 12,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: isDarkMode ? '#374151' : '#E5E7EB',
+    },
+    extraDataHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    extraDataTitle: {
+        fontSize: 12,
+        fontWeight: '600',
+        marginLeft: 6,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    extraDataContent: {
+        gap: 6,
+    },
+    extraDataRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        paddingLeft: 4,
+    },
+    extraDataBullet: {
+        fontSize: 14,
+        marginRight: 6,
+        marginTop: 1,
+    },
+    extraDataLabel: {
+        fontSize: 12,
+        fontWeight: '500',
+        marginRight: 6,
+        minWidth: 90,
+    },
+    extraDataValue: {
+        fontSize: 12,
+        fontWeight: '400',
+        flex: 1,
+        flexWrap: 'wrap',
+    },
+    extraDataDivider: {
+        height: 1,
+        backgroundColor: isDarkMode ? '#374151' : '#E5E7EB',
+        marginVertical: 8,
+    },
+    extraDataSubtitle: {
+        fontSize: 11,
+        fontWeight: '600',
+        marginBottom: 4,
+        marginLeft: 20,
+    },
+    extraDataChangeItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        paddingLeft: 20,
+        marginBottom: 4,
+    },
+    extraDataChange: {
+        fontSize: 11,
+        fontWeight: '500',
+        fontStyle: 'italic',
     },
 });
 

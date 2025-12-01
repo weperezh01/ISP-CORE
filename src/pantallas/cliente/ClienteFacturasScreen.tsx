@@ -972,12 +972,23 @@ const ClienteFacturasScreen = ({ route }) => {
     ];
 
     const proceedCobro = async (metodo: 'efectivo' | 'transferencia' | 'cheque', detalles?: { banco?: string; referencia?: string }) => {
+        console.log('🟡 [COBRO] ========================================');
+        console.log('🟡 [COBRO] proceedCobro - INICIANDO PROCESO DE COBRO');
+        console.log('🟡 [COBRO] ========================================');
+
         try {
+            console.log('🟡 [COBRO] Verificando ID de usuario...');
+            console.log('🟡 [COBRO] idUsuario:', idUsuario);
+            console.log('🟡 [COBRO] clientId:', clientId);
+            console.log('🟡 [COBRO] ispId:', ispId);
+
             if (!idUsuario) {
+                console.log('🔴 [COBRO] ERROR: No se pudo obtener el ID de usuario');
                 Alert.alert('Error', 'No se pudo obtener el ID de usuario.');
                 return;
             }
 
+            console.log('🟡 [COBRO] Filtrando facturas seleccionadas...');
             const facturasToCobrar = facturas.filter(factura => factura.isSelected).map(factura => ({
                 id_factura: factura.id_factura,
                 monto_cobrado: factura.partialPaymentActive && factura.partialPayment
@@ -987,14 +998,21 @@ const ClienteFacturasScreen = ({ route }) => {
                 id_ciclo: factura.id_ciclo
             }));
 
+            console.log('🟡 [COBRO] Facturas a cobrar (seleccionadas):', facturasToCobrar);
+
+            console.log('🟡 [COBRO] Buscando facturas vencidas no seleccionadas...');
             const now = new Date();
-            facturas.filter(factura => {
+            const facturasVencidas = facturas.filter(factura => {
                 const fechaEmision = new Date(factura.fecha_emision);
                 const diffTime = Math.abs(now - fechaEmision);
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
                 return !factura.isSelected && factura.estado === 'pendiente' && diffDays > 30;
-            }).forEach(factura => {
+            });
+
+            console.log('🟡 [COBRO] Facturas vencidas no seleccionadas encontradas:', facturasVencidas.length);
+
+            facturasVencidas.forEach(factura => {
                 facturasToCobrar.push({
                     id_factura: factura.id_factura,
                     monto_cobrado: 0,
@@ -1003,20 +1021,25 @@ const ClienteFacturasScreen = ({ route }) => {
                 });
             });
 
+            console.log('🟡 [COBRO] Total de facturas en el array facturasToCobrar:', facturasToCobrar.length);
+
             const id_ciclo = facturasToCobrar.length > 0 ? facturasToCobrar[0].id_ciclo : null;
+            console.log('🟡 [COBRO] id_ciclo extraído:', id_ciclo);
 
             if (!id_ciclo) {
+                console.log('🔴 [COBRO] ERROR: No se pudo obtener el ID del ciclo');
                 Alert.alert('Error', 'No se pudo obtener el ID del ciclo.');
                 return;
             }
 
+            console.log('🟡 [COBRO] Construyendo payload...');
             const payload: any = {
                 id_cliente: clientId,
                 monto: totalAmount,
                 id_usuario: idUsuario,
                 id_ciclo: id_ciclo,
                 facturas: facturasToCobrar,
-                id_isp: ispId,
+                id_isp: parseInt(ispId, 10), // Convertir a número
                 cargos: [],
                 metodo_pago: metodo,
             };
@@ -1024,40 +1047,116 @@ const ClienteFacturasScreen = ({ route }) => {
                 payload.detalle_pago = detalles;
             }
 
+            console.log('🟡 [COBRO] ========================================');
+            console.log('🟡 [COBRO] PAYLOAD COMPLETO A ENVIAR AL BACKEND:');
+            console.log('🟡 [COBRO] ========================================');
+            console.log(JSON.stringify(payload, null, 2));
+            console.log('🟡 [COBRO] ========================================');
+
+            console.log('🟡 [COBRO] Enviando petición al backend...');
+            console.log('🟡 [COBRO] URL:', 'https://wellnet-rd.com:444/api/facturas-procesar-cobro');
+
             const response = await fetch('https://wellnet-rd.com:444/api/facturas-procesar-cobro', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
+            console.log('🟡 [COBRO] Respuesta recibida del backend');
+            console.log('🟡 [COBRO] Status Code:', response.status);
+            console.log('🟡 [COBRO] Status Text:', response.statusText);
+            console.log('🟡 [COBRO] Response OK:', response.ok);
+
             if (response.ok) {
+                console.log('✅ [COBRO] Respuesta exitosa del backend');
                 const responseData = await response.json();
+                console.log('✅ [COBRO] ========================================');
+                console.log('✅ [COBRO] DATOS DE RESPUESTA DEL BACKEND:');
+                console.log('✅ [COBRO] ========================================');
+                console.log(JSON.stringify(responseData, null, 2));
+                console.log('✅ [COBRO] ========================================');
+
                 Alert.alert('Dinero Recibido', `Has recibido un total de RD$${totalAmount.toFixed(2)}`);
+                console.log('✅ [COBRO] Navegando a ReciboScreen...');
                 navigation.navigate('ReciboScreen', { reciboData: responseData, id_isp: ispId });
             } else {
+                console.log('🔴 [COBRO] ERROR: Respuesta no exitosa del backend');
+
+                // Intentar leer el cuerpo de la respuesta de error
+                let errorBody = null;
+                try {
+                    errorBody = await response.text();
+                    console.log('🔴 [COBRO] Cuerpo de la respuesta de error (texto):', errorBody);
+
+                    // Intentar parsear como JSON si es posible
+                    try {
+                        const errorJson = JSON.parse(errorBody);
+                        console.log('🔴 [COBRO] Cuerpo de la respuesta de error (JSON):');
+                        console.log(JSON.stringify(errorJson, null, 2));
+                    } catch (e) {
+                        console.log('🔴 [COBRO] El cuerpo de error no es JSON válido');
+                    }
+                } catch (e) {
+                    console.log('🔴 [COBRO] No se pudo leer el cuerpo de la respuesta de error:', e);
+                }
+
                 Alert.alert('Error', 'Hubo un error al procesar el cobro.');
             }
         } catch (error) {
-            console.error('Error al procesar el cobro:', error);
+            console.log('🔴 [COBRO] ========================================');
+            console.log('🔴 [COBRO] EXCEPCIÓN CAPTURADA EN proceedCobro:');
+            console.log('🔴 [COBRO] ========================================');
+            console.error('🔴 [COBRO] Error:', error);
+            console.log('🔴 [COBRO] Error message:', error.message);
+            console.log('🔴 [COBRO] Error stack:', error.stack);
+            console.log('🔴 [COBRO] ========================================');
+
             Alert.alert('Error', 'Hubo un error al procesar el cobro.');
         }
     };
 
     const confirmAndProceed = (metodo: 'efectivo' | 'transferencia' | 'cheque', detalles?: { banco?: string; referencia?: string }) => {
+        console.log('🟢 [COBRO] confirmAndProceed - Confirmación de cobro');
+        console.log('🟢 [COBRO] Método de pago:', metodo);
+        console.log('🟢 [COBRO] Detalles de pago:', detalles);
+        console.log('🟢 [COBRO] Monto total:', totalAmount);
+
         Alert.alert(
             'Confirmación',
             `¿Confirmas que deseas recibir un total de RD$${totalAmount.toFixed(2)}?`,
             [
-                { text: 'Cancelar', style: 'cancel' },
-                { text: 'Confirmar', onPress: () => proceedCobro(metodo, detalles) }
+                {
+                    text: 'Cancelar',
+                    style: 'cancel',
+                    onPress: () => console.log('🔴 [COBRO] Cobro cancelado por el usuario')
+                },
+                {
+                    text: 'Confirmar',
+                    onPress: () => {
+                        console.log('🟢 [COBRO] Usuario confirmó el cobro, llamando a proceedCobro...');
+                        proceedCobro(metodo, detalles);
+                    }
+                }
             ]
         );
     };
 
     const handleFooterPress = async () => {
+        console.log('🔵 [COBRO] handleFooterPress - Iniciando proceso de cobro');
+        console.log('🔵 [COBRO] Total a recibir:', totalAmount);
+        console.log('🔵 [COBRO] Facturas seleccionadas:', facturas.filter(f => f.isSelected).map(f => ({
+            id_factura: f.id_factura,
+            monto_total: f.monto_total,
+            monto_recibido: f.monto_recibido,
+            partialPayment: f.partialPayment,
+            partialPaymentActive: f.partialPaymentActive
+        })));
+
         if (totalAmount > 0) {
+            console.log('🔵 [COBRO] Abriendo modal de método de pago');
             setPayMethodModalVisible(true);
         } else {
+            console.log('⚠️ [COBRO] No hay monto a recibir');
             Alert.alert('No hay dinero a recibir', 'Seleccione facturas para recibir dinero.');
         }
     };

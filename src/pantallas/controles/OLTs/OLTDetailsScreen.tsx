@@ -7,6 +7,34 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ThemeSwitch from '../../../componentes/themeSwitch';
 import { format } from 'date-fns';
 
+// Helper function: fetch with timeout
+const fetchWithTimeout = async (url, options = {}, timeout = 30000) => {
+    console.log(`⏱️ [Fetch Timeout] Configurando timeout de ${timeout}ms para: ${url}`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+        console.log(`⏱️ [Fetch Timeout] ¡TIMEOUT! La petición excedió ${timeout}ms`);
+        controller.abort();
+    }, timeout);
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        console.log(`✅ [Fetch Timeout] Petición completada exitosamente antes del timeout`);
+        return response;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            console.log(`🔴 [Fetch Timeout] Petición abortada por timeout de ${timeout}ms`);
+            throw new Error(`La petición tardó más de ${timeout / 1000} segundos. El servidor no respondió a tiempo.`);
+        }
+        throw error;
+    }
+};
+
 const OLTDetailsScreen = () => {
     const navigation = useNavigation();
     const route = useRoute();
@@ -104,23 +132,38 @@ const OLTDetailsScreen = () => {
 
     // Get user data from storage
     const obtenerDatosUsuario = useCallback(async () => {
+        console.log('🟢 [OLT Details] Obteniendo datos de usuario de AsyncStorage...');
         try {
             const jsonValue = await AsyncStorage.getItem('@loginData');
+            console.log('🟢 [OLT Details] @loginData raw:', jsonValue ? 'Datos encontrados' : 'NULL');
+
             if (jsonValue != null) {
                 const userData = JSON.parse(jsonValue);
+                console.log('🟢 [OLT Details] Usuario ID:', userData.id);
+                console.log('🟢 [OLT Details] Token disponible:', userData.token ? 'Sí' : 'No');
                 setUsuarioId(userData.id);
                 setAuthToken(userData.token);
+                console.log('✅ [OLT Details] Datos de usuario configurados correctamente');
+            } else {
+                console.log('⚠️ [OLT Details] No se encontraron datos de login en AsyncStorage');
             }
         } catch (e) {
+            console.log('🔴 [OLT Details] Error al leer datos del usuario:', e);
             console.error('Error al leer el nombre del usuario', e);
         }
     }, []);
 
     // Fetch OLT details (realtime)
     const fetchOltDetails = useCallback(async (forceRefresh = false) => {
-        console.log('🔍 [OLT Details] Fetching OLT details for ID:', oltId, 'Force refresh:', forceRefresh);
+        console.log('🔵 [OLT Details] ========================================');
+        console.log('🔵 [OLT Details] fetchOltDetails - INICIANDO CARGA DE DATOS OLT');
+        console.log('🔵 [OLT Details] ========================================');
+        console.log('🔵 [OLT Details] oltId:', oltId);
+        console.log('🔵 [OLT Details] forceRefresh:', forceRefresh);
+        console.log('🔵 [OLT Details] authToken disponible:', authToken ? 'Sí' : 'No');
 
         if (!oltId) {
+            console.log('🔴 [OLT Details] ERROR: ID de OLT no proporcionado');
             setError('ID de OLT no proporcionado');
             setIsLoading(false);
             return;
@@ -133,50 +176,94 @@ const OLTDetailsScreen = () => {
 
         try {
             if (forceRefresh) {
+                console.log('🔵 [OLT Details] Activando modo refresh');
                 setIsRefreshing(true);
             } else {
+                console.log('🔵 [OLT Details] Activando modo loading');
                 setIsLoading(true);
             }
             setError(null);
 
             // ✅ FIX: Agregar parámetro force para bypass del caché del backend
             const url = `https://wellnet-rd.com:444/api/olts/realtime/detalles/${oltId}${forceRefresh ? '?force=true' : ''}`;
+            console.log('🔵 [OLT Details] URL completa:', url);
+            console.log('🔵 [OLT Details] Headers:', {
+                'Content-Type': 'application/json',
+                'Authorization': authToken ? `Bearer ${authToken.substring(0, 20)}...` : 'No token'
+            });
 
-            const response = await fetch(url, {
+            console.log('🔵 [OLT Details] Enviando petición al backend...');
+            console.log('⏱️ [OLT Details] Timeout configurado: 60 segundos (la OLT puede tardar en responder)');
+            const response = await fetchWithTimeout(url, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${authToken}`
                 }
-            });
+            }, 60000); // 60 segundos de timeout (OLT realtime puede ser lento)
+
+            console.log('🔵 [OLT Details] Respuesta recibida del backend');
+            console.log('🔵 [OLT Details] Status Code:', response.status);
+            console.log('🔵 [OLT Details] Status Text:', response.statusText);
+            console.log('🔵 [OLT Details] Response OK:', response.ok);
+            console.log('🔵 [OLT Details] Content-Type:', response.headers.get('content-type'));
 
             const data = await processResponse(response, 'OLT details');
 
-            console.log('✅ [OLT Details] Realtime data received:', data);
+            console.log('✅ [OLT Details] ========================================');
+            console.log('✅ [OLT Details] DATOS RECIBIDOS DEL BACKEND:');
+            console.log('✅ [OLT Details] ========================================');
+            console.log(JSON.stringify(data, null, 2));
+            console.log('✅ [OLT Details] ========================================');
 
             // Handle response structure from realtime API
             let oltData = null;
+            console.log('🔵 [OLT Details] Procesando estructura de respuesta...');
+
             if (data && data.success && data.data && data.data.olt) {
+                console.log('✅ [OLT Details] Estructura: data.success.data.olt');
                 oltData = data.data.olt;
                 setIsCached(data.cached || false);
             } else if (data && data.data && data.data.olt) {
+                console.log('✅ [OLT Details] Estructura: data.data.olt');
                 oltData = data.data.olt;
             } else if (data && data.olt) {
+                console.log('✅ [OLT Details] Estructura: data.olt');
                 oltData = data.olt;
             } else if (data) {
+                console.log('⚠️ [OLT Details] Estructura: data directa (sin anidamiento)');
                 oltData = data;
+            } else {
+                console.log('🔴 [OLT Details] No se pudo extraer oltData de la respuesta');
+            }
+
+            console.log('🔵 [OLT Details] oltData procesada:', oltData ? 'Datos disponibles' : 'NULL');
+            if (oltData) {
+                console.log('🔵 [OLT Details] Nombre OLT:', oltData.nombre_olt);
+                console.log('🔵 [OLT Details] IP OLT:', oltData.ip_olt);
+                console.log('🔵 [OLT Details] Modelo:', oltData.modelo);
             }
 
             setOlt(oltData);
             setLastUpdate(new Date());
+            console.log('✅ [OLT Details] Estado actualizado con los datos de OLT');
 
             // Register navigation
+            console.log('🔵 [OLT Details] Registrando navegación...');
             await registrarNavegacion(oltData, null);
 
         } catch (error) {
-            console.error('❌ [OLT Details] Error:', error);
+            console.log('🔴 [OLT Details] ========================================');
+            console.log('🔴 [OLT Details] EXCEPCIÓN CAPTURADA EN fetchOltDetails:');
+            console.log('🔴 [OLT Details] ========================================');
+            console.error('🔴 [OLT Details] Error:', error);
+            console.log('🔴 [OLT Details] Error message:', error.message);
+            console.log('🔴 [OLT Details] Error stack:', error.stack);
+            console.log('🔴 [OLT Details] ========================================');
+
             setError(error.message);
         } finally {
+            console.log('🔵 [OLT Details] Finalizando proceso - Desactivando loaders');
             setIsLoading(false);
             setIsRefreshing(false);
         }
@@ -184,59 +271,111 @@ const OLTDetailsScreen = () => {
 
     // Fetch ONUs statistics (realtime)
     const fetchOnusStats = useCallback(async (forceRefresh = false) => {
-        if (!oltId) return;
+        console.log('🟡 [OLT Stats] ========================================');
+        console.log('🟡 [OLT Stats] fetchOnusStats - INICIANDO CARGA DE ESTADÍSTICAS');
+        console.log('🟡 [OLT Stats] ========================================');
+        console.log('🟡 [OLT Stats] oltId:', oltId);
+        console.log('🟡 [OLT Stats] forceRefresh:', forceRefresh);
+
+        if (!oltId) {
+            console.log('⚠️ [OLT Stats] No oltId, saltando carga de estadísticas');
+            return;
+        }
 
         if (!authToken) {
-            console.log('⚠️ [OLT Details] No auth token for stats');
+            console.log('⚠️ [OLT Stats] No auth token for stats');
             return;
         }
 
         try {
             // ✅ FIX: Agregar parámetro force para bypass del caché
             const url = `https://wellnet-rd.com:444/api/olts/realtime/${oltId}/onus/estadisticas${forceRefresh ? '?force=true' : ''}`;
+            console.log('🟡 [OLT Stats] URL completa:', url);
 
-            const response = await fetch(url, {
+            console.log('🟡 [OLT Stats] Enviando petición al backend...');
+            const response = await fetchWithTimeout(url, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${authToken}`
                 }
-            });
+            }, 30000); // 30 segundos de timeout
+
+            console.log('🟡 [OLT Stats] Respuesta recibida');
+            console.log('🟡 [OLT Stats] Status Code:', response.status);
+            console.log('🟡 [OLT Stats] Status Text:', response.statusText);
+            console.log('🟡 [OLT Stats] Response OK:', response.ok);
 
             const data = await processResponse(response, 'ONUs statistics');
 
-            console.log('✅ [OLT Details] Realtime stats received:', data);
+            console.log('✅ [OLT Stats] ========================================');
+            console.log('✅ [OLT Stats] ESTADÍSTICAS RECIBIDAS:');
+            console.log('✅ [OLT Stats] ========================================');
+            console.log(JSON.stringify(data, null, 2));
+            console.log('✅ [OLT Stats] ========================================');
 
             // Handle response structure from realtime API
             let statsData = null;
+            console.log('🟡 [OLT Stats] Procesando estructura de respuesta...');
+
             if (data && data.success && data.data && data.data.estadisticas) {
+                console.log('✅ [OLT Stats] Estructura: data.success.data.estadisticas');
                 statsData = data.data.estadisticas;
             } else if (data && data.data && data.data.estadisticas) {
+                console.log('✅ [OLT Stats] Estructura: data.data.estadisticas');
                 statsData = data.data.estadisticas;
             } else if (data && data.estadisticas) {
+                console.log('✅ [OLT Stats] Estructura: data.estadisticas');
                 statsData = data.estadisticas;
             } else if (data) {
+                console.log('⚠️ [OLT Stats] Estructura: data directa');
                 statsData = data;
+            } else {
+                console.log('🔴 [OLT Stats] No se pudo extraer statsData');
+            }
+
+            console.log('🟡 [OLT Stats] statsData procesada:', statsData ? 'Datos disponibles' : 'NULL');
+            if (statsData) {
+                console.log('🟡 [OLT Stats] Pending:', statsData.pending);
+                console.log('🟡 [OLT Stats] Online:', statsData.online);
+                console.log('🟡 [OLT Stats] Offline:', statsData.offline);
+                console.log('🟡 [OLT Stats] Authorized:', statsData.authorized);
             }
 
             setOnusStats(statsData);
+            console.log('✅ [OLT Stats] Estado actualizado con estadísticas');
 
         } catch (error) {
-            console.error('❌ [OLT Details] Error fetching ONUs stats:', error);
+            console.log('🔴 [OLT Stats] ========================================');
+            console.log('🔴 [OLT Stats] EXCEPCIÓN CAPTURADA EN fetchOnusStats:');
+            console.log('🔴 [OLT Stats] ========================================');
+            console.error('🔴 [OLT Stats] Error:', error);
+            console.log('🔴 [OLT Stats] Error message:', error.message);
+            console.log('🔴 [OLT Stats] Error stack:', error.stack);
+            console.log('🔴 [OLT Stats] ========================================');
             // Don't show error for stats, it's optional
         }
     }, [oltId, authToken, processResponse]);
 
     // Load all data (optimized with parallel loading)
     const loadData = useCallback(async (forceRefresh = false) => {
+        console.log('🔷 [OLT Details] ========================================');
+        console.log('🔷 [OLT Details] loadData - INICIANDO CARGA COMPLETA');
+        console.log('🔷 [OLT Details] forceRefresh:', forceRefresh);
+        console.log('🔷 [OLT Details] ========================================');
+
         await obtenerDatosUsuario();
 
         // ✅ FIX: Ejecutar ambas llamadas en PARALELO en lugar de secuencial
         // Pasar forceRefresh a AMBAS llamadas para asegurar datos frescos
+        console.log('🔷 [OLT Details] Ejecutando fetchOltDetails y fetchOnusStats en paralelo...');
         await Promise.all([
             fetchOltDetails(forceRefresh),
             fetchOnusStats(forceRefresh)
         ]);
+
+        console.log('🔷 [OLT Details] loadData - CARGA COMPLETA FINALIZADA');
+        console.log('🔷 [OLT Details] ========================================');
     }, [obtenerDatosUsuario, fetchOltDetails, fetchOnusStats]);
 
     // Handle manual refresh (force update from OLT)
@@ -251,9 +390,8 @@ const OLTDetailsScreen = () => {
     // Initial load and focus refresh
     useFocusEffect(
         useCallback(() => {
-            // ✅ FIX: Forzar refresh en cada foco para obtener datos actualizados
-            // Esto asegura que después de autorizar una ONU, los contadores se actualicen
-            loadData(true);
+            // Cargar usando caché por defecto; el backend ahora maneja refresh en background
+            loadData(false);
         }, [loadData])
     );
 

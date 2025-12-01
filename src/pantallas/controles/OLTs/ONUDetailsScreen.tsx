@@ -45,6 +45,7 @@ const ONUDetailsScreen = () => {
     const styles = getStyles(isDarkMode);
 
     const previewData = routeParams.onuPreview || null;
+    const autoOpenAuthModalRequested = routeParams.autoOpenAuthModal === true;
     const [portHint] = useState(routeParams.puerto || previewData?.puerto || null);
     const [ontIdHint] = useState(
         routeParams.ont_id ??
@@ -68,6 +69,7 @@ const ONUDetailsScreen = () => {
     const [dataSource, setDataSource] = useState('');
     const [consistencyCheck, setConsistencyCheck] = useState('');
     const hasLoadedOnce = useRef(false);
+    const autoOpenAuthModalTriggered = useRef(false);
 
     // Authorization modal states
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -229,6 +231,15 @@ const ONUDetailsScreen = () => {
             fetchOnuDetails();
         }
     }, [authToken, fetchOnuDetails]);
+
+    useEffect(() => {
+        if (autoOpenAuthModalRequested && onu && !autoOpenAuthModalTriggered.current) {
+            autoOpenAuthModalTriggered.current = true;
+            const timeoutId = setTimeout(() => setShowAuthModal(true), 150);
+            return () => clearTimeout(timeoutId);
+        }
+        return undefined;
+    }, [autoOpenAuthModalRequested, onu]);
 
     // Refresh on focus
     useFocusEffect(

@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, View, Text, TouchableOpacity, FlatList, ActivityIndicator, TextInput } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, View, Text, TouchableOpacity, FlatList, ActivityIndicator, TextInput, Animated } from 'react-native';
 import { useTheme } from '../../../../ThemeContext';
 import { getStyles } from './ONUsListScreenStyles';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -22,8 +22,12 @@ const ONUsListScreen = () => {
     const [authToken, setAuthToken] = useState(null);
     const [isCached, setIsCached] = useState(false);
     const [dataSource, setDataSource] = useState('');
+    const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
     const isFetchingRef = React.useRef(false);
     const hasLoadedOnceRef = React.useRef(false);
+    const scrollOffsetRef = React.useRef(0);
+    const [headerHeight, setHeaderHeight] = useState(0);
+    const headerAnimation = React.useRef(new Animated.Value(0)).current;
 
     // Get auth token from storage
     useEffect(() => {
@@ -405,10 +409,75 @@ const ONUsListScreen = () => {
         setFilteredOnus(filtered);
     };
 
+    useEffect(() => {
+        Animated.timing(headerAnimation, {
+            toValue: isHeaderCollapsed ? 1 : 0,
+            duration: 220,
+            useNativeDriver: false,
+        }).start();
+    }, [isHeaderCollapsed, headerAnimation]);
+
     const handleSearch = (text) => {
         setSearchQuery(text);
         applyFilter(activeFilter);
     };
+
+    const handleListScroll = useCallback((event) => {
+        const currentOffset = event.nativeEvent.contentOffset.y;
+        const previousOffset = scrollOffsetRef.current;
+        const diff = currentOffset - previousOffset;
+        const threshold = 12;
+
+        if (currentOffset <= 0) {
+            scrollOffsetRef.current = 0;
+            if (isHeaderCollapsed) {
+                setIsHeaderCollapsed(false);
+            }
+            return;
+        }
+
+        if (diff > threshold && !isHeaderCollapsed) {
+            setIsHeaderCollapsed(true);
+        } else if (diff < -threshold && isHeaderCollapsed) {
+            setIsHeaderCollapsed(false);
+        }
+
+        scrollOffsetRef.current = currentOffset;
+    }, [isHeaderCollapsed]);
+
+    const fixedSectionAnimatedStyle = useMemo(() => {
+        if (headerHeight <= 0) {
+            return {};
+        }
+
+        const animatedHeight = headerAnimation.interpolate({
+            inputRange: [0, 1],
+            outputRange: [headerHeight, 0],
+        });
+
+        const animatedOpacity = headerAnimation.interpolate({
+            inputRange: [0, 1],
+            outputRange: [1, 0],
+        });
+
+        const animatedMarginBottom = headerAnimation.interpolate({
+            inputRange: [0, 1],
+            outputRange: [16, 0],
+        });
+
+        return {
+            height: animatedHeight,
+            opacity: animatedOpacity,
+            marginBottom: animatedMarginBottom,
+        };
+    }, [headerHeight, headerAnimation]);
+
+    const handleFixedSectionLayout = useCallback((event) => {
+        const { height } = event.nativeEvent.layout;
+        if (height > 0 && height !== headerHeight) {
+            setHeaderHeight(height);
+        }
+    }, [headerHeight]);
 
     const getOnuStatus = (onu) => {
         const estadoResumido = String(onu?.estado_resumido || '').toLowerCase();
@@ -663,8 +732,9 @@ const ONUsListScreen = () => {
                                 oltId: oltId,
                                 onuId: item.serial || item.id_onu || item.index,
                                 oltName: oltName,
-                                portHint: item.puerto,
-                                ontIdHint: item.ont_id,
+                                puerto: item.puerto,
+                                ont_id: item.ont_id,
+                                onuPreview: item,
                                 autoOpenAuthModal: true
                             });
                         }}
@@ -813,44 +883,51 @@ const ONUsListScreen = () => {
 
     return (
         <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.headerContainer}>
-                <View style={styles.headerContent}>
-                    <View style={styles.headerLeft}>
-                        <TouchableOpacity
-                            style={styles.backButton}
-                            onPress={() => navigation.goBack()}
-                        >
-                            <Text style={styles.backButtonText}>← Volver</Text>
-                        </TouchableOpacity>
-                        <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>ONUs - {String(oltName || 'OLT')}</Text>
-                            <Text style={styles.headerSubtitle}>
-                                {filteredOnus.length} de {onus.length} ONUs
-                                {activeFilter !== 'all' && ` (${activeFilter})`}
-                            </Text>
+            <Animated.View
+                style={[styles.fixedSectionWrapper, headerHeight > 0 && fixedSectionAnimatedStyle]}
+                pointerEvents={isHeaderCollapsed ? 'none' : 'auto'}
+            >
+                <View onLayout={handleFixedSectionLayout}>
+                    {/* Header */}
+                    <View style={styles.headerContainer}>
+                        <View style={styles.headerContent}>
+                            <View style={styles.headerLeft}>
+                                <TouchableOpacity
+                                    style={styles.backButton}
+                                    onPress={() => navigation.goBack()}
+                                >
+                                    <Text style={styles.backButtonText}>← Volver</Text>
+                                </TouchableOpacity>
+                                <View style={styles.headerTitleContainer}>
+                                    <Text style={styles.headerTitle}>ONUs - {String(oltName || 'OLT')}</Text>
+                                    <Text style={styles.headerSubtitle}>
+                                        {filteredOnus.length} de {onus.length} ONUs
+                                        {activeFilter !== 'all' && ` (${activeFilter})`}
+                                    </Text>
+                                </View>
+                            </View>
+                            <View style={styles.headerActions}>
+                                <View style={styles.totalBadge}>
+                                    <Text style={styles.totalBadgeText}>{String(onus.length)}</Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.refreshButton}
+                                    onPress={handleRefresh}
+                                    disabled={isRefreshing}
+                                >
+                                    <Text style={styles.refreshButtonText}>
+                                        {isRefreshing ? '⟳' : '🔄'}
+                                    </Text>
+                                </TouchableOpacity>
+                                <ThemeSwitch />
+                            </View>
                         </View>
                     </View>
-                    <View style={styles.headerActions}>
-                        <View style={styles.totalBadge}>
-                            <Text style={styles.totalBadgeText}>{String(onus.length)}</Text>
-                        </View>
-                        <TouchableOpacity
-                            style={styles.refreshButton}
-                            onPress={handleRefresh}
-                            disabled={isRefreshing}
-                        >
-                            <Text style={styles.refreshButtonText}>
-                                {isRefreshing ? '⟳' : '🔄'}
-                            </Text>
-                        </TouchableOpacity>
-                        <ThemeSwitch />
-                    </View>
-                </View>
-            </View>
 
-            {/* Filters */}
-            {renderFilterButtons()}
+                    {/* Filters */}
+                    {renderFilterButtons()}
+                </View>
+            </Animated.View>
 
             {/* Search */}
             <View style={styles.searchContainer}>
@@ -889,6 +966,8 @@ const ONUsListScreen = () => {
                         renderItem={renderOnuCard}
                         contentContainerStyle={styles.onuList}
                         showsVerticalScrollIndicator={false}
+                        onScroll={handleListScroll}
+                        scrollEventThrottle={16}
                         ListFooterComponent={
                             <View style={styles.footerContainer}>
                                 {isCached && (
