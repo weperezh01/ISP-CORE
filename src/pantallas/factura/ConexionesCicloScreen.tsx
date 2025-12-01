@@ -31,6 +31,29 @@ const ConexionesCicloScreen = ({ route, navigation }) => {
         conexionesInactivas: 0,
     });
 
+    // Fetch statistics from backend (same source as DetalleCiclo)
+    const fetchEstadisticasConexiones = async () => {
+        try {
+            const response = await axios.post(
+                'https://wellnet-rd.com:444/api/conexiones/estadisticas-por-ciclo',
+                { id_ciclo }
+            );
+
+            if (response.data.success && response.data.data) {
+                const { resumen } = response.data.data;
+                setEstadisticas({
+                    totalConexiones: resumen?.totalConexiones || 0,
+                    conexionesActivas: resumen?.conexionesActivas || 0,
+                    conexionesSuspendidas: resumen?.conexionesSuspendidas || 0,
+                    conexionesInactivas: resumen?.conexionesInactivas || 0,
+                });
+            }
+        } catch (error) {
+            console.error('Error al obtener estadísticas de conexiones:', error);
+            // No mostrar alerta, solo log, ya que no es crítico
+        }
+    };
+
     // Fetch connections for this cycle
     const fetchConexionesCiclo = async () => {
         try {
@@ -47,18 +70,6 @@ const ConexionesCicloScreen = ({ route, navigation }) => {
                 setFilteredConnectionList(sortedConnections);
                 setConnectionCount(sortedConnections.length);
                 setFilteredConnectionCount(sortedConnections.length);
-
-                // Calcular estadísticas
-                const stats = {
-                    totalConexiones: sortedConnections.length,
-                    conexionesActivas: sortedConnections.filter(c => c.id_estado_conexion === ESTADOS_CONEXION.ACTIVA).length,
-                    conexionesSuspendidas: sortedConnections.filter(c => c.id_estado_conexion === ESTADOS_CONEXION.SUSPENDIDA).length,
-                    conexionesInactivas: sortedConnections.filter(c =>
-                        c.id_estado_conexion !== ESTADOS_CONEXION.ACTIVA &&
-                        c.id_estado_conexion !== ESTADOS_CONEXION.SUSPENDIDA
-                    ).length,
-                };
-                setEstadisticas(stats);
             }
         } catch (error) {
             console.error('Error al cargar conexiones del ciclo:', error);
@@ -70,7 +81,11 @@ const ConexionesCicloScreen = ({ route, navigation }) => {
 
     useEffect(() => {
         if (id_ciclo) {
-            fetchConexionesCiclo();
+            // Llamar a ambos endpoints en paralelo
+            Promise.all([
+                fetchConexionesCiclo(),
+                fetchEstadisticasConexiones()
+            ]);
         }
     }, [id_ciclo]);
 
