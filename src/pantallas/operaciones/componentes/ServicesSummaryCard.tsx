@@ -11,12 +11,20 @@ type PopularPlan = {
   suscripciones: number;
 };
 
+type ServicePlan = {
+  id: number | string;
+  nombre: string;
+  precio: number;
+  suscripciones: number;
+};
+
 type ServicesSummaryCardProps = {
   totalPlanes: number;
   totalSuscripciones: number;
   precioPromedio: number;
   ingresoMensual: number;
   planMasPopular?: PopularPlan | null;
+  planesDetalle?: ServicePlan[];
   theme: {
     styles: ThemeStyles;
     isDarkMode: boolean;
@@ -29,6 +37,7 @@ const ServicesSummaryCard: React.FC<ServicesSummaryCardProps> = ({
   precioPromedio,
   ingresoMensual,
   planMasPopular,
+  planesDetalle,
   theme,
 }) => {
   const { styles, isDarkMode } = theme;
@@ -43,6 +52,12 @@ const ServicesSummaryCard: React.FC<ServicesSummaryCardProps> = ({
 
   const popularPct = suscripciones > 0 ? (popularSubs / suscripciones) * 100 : 0;
   const arpu = suscripciones > 0 ? ingreso / suscripciones : 0;
+
+  // Ordenar planes por suscripciones descendente y tomar top 4
+  const planesOrdenados = (planesDetalle || [])
+    .slice()
+    .sort((a, b) => b.suscripciones - a.suscripciones);
+  const planesTop = planesOrdenados.slice(0, 4);
 
   const formatCurrency = (value: number) => {
     if (!Number.isFinite(value)) return '$0';
@@ -144,6 +159,45 @@ const ServicesSummaryCard: React.FC<ServicesSummaryCardProps> = ({
             <Text style={styles.servicesPopularEmpty}>Sin datos de plan popular</Text>
           )}
         </View>
+
+        {/* Sección de planes y suscripciones */}
+        {planesTop.length > 0 && (
+          <View style={styles.servicesPlansSection}>
+            <View style={styles.servicesPlansHeader}>
+              <Text style={styles.servicesPlansTitle}>Planes y suscripciones</Text>
+              <Text style={styles.servicesPlansSubtitle}>
+                {`${planesTop.length} de ${planes} planes`}
+              </Text>
+            </View>
+
+            {planesTop.map((plan) => (
+              <View key={plan.id} style={styles.servicesPlanRow}>
+                <View style={styles.servicesPlanLeft}>
+                  <View style={styles.servicesPlanBullet} />
+                  <Text
+                    style={styles.servicesPlanName}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {plan.nombre}
+                  </Text>
+                </View>
+
+                <View style={styles.servicesPlanCenter}>
+                  <Text style={styles.servicesPlanPrice}>
+                    {formatCurrency(plan.precio)}
+                  </Text>
+                </View>
+
+                <View style={styles.servicesPlanRight}>
+                  <Text style={styles.servicesPlanSubs}>
+                    {plan.suscripciones} suscr.
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
       </LinearGradient>
     </View>
   );

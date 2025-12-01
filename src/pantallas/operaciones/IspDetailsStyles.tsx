@@ -1457,6 +1457,65 @@ const getStyles = (isDarkMode) => StyleSheet.create({
         fontWeight: '600',
     },
 
+    // Services - Plans list section
+    servicesPlansSection: {
+        marginTop: 12,
+    },
+    servicesPlansHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 6,
+    },
+    servicesPlansTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: isDarkMode ? colors.gray[200] : colors.gray[800],
+    },
+    servicesPlansSubtitle: {
+        fontSize: 11,
+        color: isDarkMode ? colors.gray[400] : colors.gray[600],
+    },
+    servicesPlanRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    servicesPlanLeft: {
+        flex: 1.4,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    servicesPlanBullet: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: isDarkMode ? '#34D399' : '#10B981',
+        marginRight: 6,
+    },
+    servicesPlanName: {
+        fontSize: 12,
+        color: isDarkMode ? colors.gray[50] : colors.gray[800],
+        flex: 1,
+    },
+    servicesPlanCenter: {
+        flex: 1,
+        alignItems: 'flex-end',
+    },
+    servicesPlanPrice: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: isDarkMode ? '#6EE7B7' : '#047857',
+    },
+    servicesPlanRight: {
+        flex: 1,
+        alignItems: 'flex-end',
+    },
+    servicesPlanSubs: {
+        fontSize: 12,
+        color: isDarkMode ? colors.gray[200] : colors.gray[800],
+    },
+
     // Users summary card
     usersCard: {
         width: '100%',

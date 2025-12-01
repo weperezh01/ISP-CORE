@@ -200,6 +200,7 @@ const IspDetailsScreen = ({ route, navigation }) => {
       activos: 0,
       inactivos: 0,
     },
+    planes: [],
   });
 
   // 5. Estados para animación de header
@@ -357,12 +358,12 @@ const totales = async (ispId) => {
 
         // Adaptar posibles snake_case
         const data = {
-          totalClientes: body.totalClientes ?? body.total_clientes ?? 0,
-          clientesActivos: body.clientesActivos ?? body.clientes_activos ?? 0,
-          clientesInactivos: body.clientesInactivos ?? body.clientes_inactivos ?? 0,
-          totalFacturasVencidas: body.totalFacturasVencidas ?? body.total_facturas_vencidas ?? 0,
-          totalFacturasVencidasActivos: body.totalFacturasVencidasActivos ?? body.total_facturas_vencidas_activos ?? 0,
-          totalFacturasVencidasInactivos: body.totalFacturasVencidasInactivos ?? body.total_facturas_vencidas_inactivos ?? 0,
+          totalClientes: body?.totalClientes ?? body?.total_clientes ?? 0,
+          clientesActivos: body?.clientesActivos ?? body?.clientes_activos ?? 0,
+          clientesInactivos: body?.clientesInactivos ?? body?.clientes_inactivos ?? 0,
+          totalFacturasVencidas: body?.totalFacturasVencidas ?? body?.total_facturas_vencidas ?? 0,
+          totalFacturasVencidasActivos: body?.totalFacturasVencidasActivos ?? body?.total_facturas_vencidas_activos ?? 0,
+          totalFacturasVencidasInactivos: body?.totalFacturasVencidasInactivos ?? body?.total_facturas_vencidas_inactivos ?? 0,
         };
   
         // Actualiza el estado con los datos recibidos
@@ -426,14 +427,14 @@ const totales = async (ispId) => {
       const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
 
       // Tomar valores directos o derivarlos desde conexionesPorEstado
-      const totalConexiones = body.totalConexiones ?? body.total_conexiones ?? 0;
-      const conexionesActivas = body.conexionesActivas ?? body.conexiones_activas ?? body?.conexionesPorEstado?.estado3 ?? 0;
-      const conexionesSuspendidas = body.conexionesSuspendidas ?? body.conexiones_suspendidas ?? body?.conexionesPorEstado?.estado4 ?? 0;
+      const totalConexiones = body?.totalConexiones ?? body?.total_conexiones ?? 0;
+      const conexionesActivas = body?.conexionesActivas ?? body?.conexiones_activas ?? body?.conexionesPorEstado?.estado3 ?? 0;
+      const conexionesSuspendidas = body?.conexionesSuspendidas ?? body?.conexiones_suspendidas ?? body?.conexionesPorEstado?.estado4 ?? 0;
       // Inactivas combinan 0,5,6 si no viene directo
       const inactivasDerivadas = (body?.conexionesPorEstado?.estado0 || 0)
         + (body?.conexionesPorEstado?.estado5 || 0)
         + (body?.conexionesPorEstado?.estado6 || 0);
-      const conexionesInactivas = body.conexionesInactivas ?? body.conexiones_inactivas ?? inactivasDerivadas;
+      const conexionesInactivas = body?.conexionesInactivas ?? body?.conexiones_inactivas ?? inactivasDerivadas;
 
       setTotalesCon({ totalConexiones, conexionesActivas, conexionesSuspendidas, conexionesInactivas });
       console.log('✅ Totales conexiones:', { totalConexiones, conexionesActivas, conexionesSuspendidas, conexionesInactivas });
@@ -478,12 +479,12 @@ const totales = async (ispId) => {
 
       const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
 
-      const totalCiclos = body.totalCiclos ?? body.total_ciclos ?? 0;
-      const ciclosVigentes = body.ciclosVigentes ?? body.ciclos_vigentes ?? 0;
-      const ciclosCerrados = body.ciclosCerrados ?? body.ciclos_cerrados ?? 0;
-      const ciclosVencidos = body.ciclosVencidos ?? body.ciclos_vencidos ?? 0;
+      const totalCiclos = body?.totalCiclos ?? body?.total_ciclos ?? 0;
+      const ciclosVigentes = body?.ciclosVigentes ?? body?.ciclos_vigentes ?? 0;
+      const ciclosCerrados = body?.ciclosCerrados ?? body?.ciclos_cerrados ?? 0;
+      const ciclosVencidos = body?.ciclosVencidos ?? body?.ciclos_vencidos ?? 0;
 
-      const rf = body.resumenFinanciero || body.resumen_financiero || {};
+      const rf = body?.resumenFinanciero || body?.resumen_financiero || {};
       let resumenFinanciero = {
         totalFacturas: rf.totalFacturas ?? rf.total_facturas ?? 0,
         totalDinero: rf.totalDinero ?? rf.total_dinero ?? 0,
@@ -556,20 +557,20 @@ const totales = async (ispId) => {
 
       const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
 
-      const totalSmsEnviados = body.totalSmsEnviados ?? body.total_sms_enviados ?? 0;
-      const smsExitosos = body.smsExitosos ?? body.sms_exitosos ?? 0;
-      const smsFallidos = body.smsFallidos ?? body.sms_fallidos ?? 0;
-      const smsPendientes = body.smsPendientes ?? body.sms_pendientes ?? 0;
-      const smsCancelados = body.smsCancelados ?? body.sms_cancelados ?? 0;
+      const totalSmsEnviados = body?.totalSmsEnviados ?? body.total_sms_enviados ?? 0;
+      const smsExitosos = body?.smsExitosos ?? body.sms_exitosos ?? 0;
+      const smsFallidos = body?.smsFallidos ?? body.sms_fallidos ?? 0;
+      const smsPendientes = body?.smsPendientes ?? body.sms_pendientes ?? 0;
+      const smsCancelados = body?.smsCancelados ?? body.sms_cancelados ?? 0;
 
-      const ee = body.estadisticasEnvio || body.estadisticas_envio || {};
+      const ee = body?.estadisticasEnvio || body?.estadisticas_envio || {};
       const estadisticasEnvio = {
         tasaExito: ee.tasaExito ?? ee.tasa_exito ?? 0,
         tasaFallo: ee.tasaFallo ?? ee.tasa_fallo ?? 0,
         intentosPromedioEnvio: ee.intentosPromedioEnvio ?? ee.intentos_promedio_envio ?? 0,
       };
 
-      const rf2 = body.resumenFinanciero || body.resumen_financiero || {};
+      const rf2 = body?.resumenFinanciero || body.resumen_financiero || {};
       const resumenFinanciero = {
         costoTotal: rf2.costoTotal ?? rf2.costo_total ?? 0,
         costoPromedio: rf2.costoPromedio ?? rf2.costo_promedio ?? 0,
@@ -577,14 +578,14 @@ const totales = async (ispId) => {
         smsSinCosto: rf2.smsSinCosto ?? rf2.sms_sin_costo ?? 0,
       };
 
-      const et = body.estadisticasTiempo || body.estadisticas_tiempo || {};
+      const et = body?.estadisticasTiempo || body?.estadisticas_tiempo || {};
       const estadisticasTiempo = {
         smsEsteMes: et.smsEsteMes ?? et.sms_este_mes ?? 0,
         smsEstaSemana: et.smsEstaSemana ?? et.sms_esta_semana ?? 0,
         smsHoy: et.smsHoy ?? et.sms_hoy ?? 0,
       };
 
-      const inter = body.interactividad || {};
+      const inter = body?.interactividad || {};
       const interactividad = {
         mensajesEntrantes: inter.mensajesEntrantes ?? inter.mensajes_entrantes ?? 0,
         tasaRespuesta: inter.tasaRespuesta ?? inter.tasa_respuesta ?? 0,
@@ -638,20 +639,20 @@ const totales = async (ispId) => {
 
       const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
 
-      const totalOrdenes = body.totalOrdenes ?? body.total_ordenes ?? 0;
-      const ordenesPendientes = body.ordenesPendientes ?? body.ordenes_pendientes ?? 0;
-      const ordenesEnProgreso = body.ordenesEnProgreso ?? body.ordenes_en_progreso ?? 0;
-      const ordenesCompletadas = body.ordenesCompletadas ?? body.ordenes_completadas ?? 0;
-      const ordenesCanceladas = body.ordenesCanceladas ?? body.ordenes_canceladas ?? 0;
+      const totalOrdenes = body?.totalOrdenes ?? body.total_ordenes ?? 0;
+      const ordenesPendientes = body?.ordenesPendientes ?? body.ordenes_pendientes ?? 0;
+      const ordenesEnProgreso = body?.ordenesEnProgreso ?? body.ordenes_en_progreso ?? 0;
+      const ordenesCompletadas = body?.ordenesCompletadas ?? body.ordenes_completadas ?? 0;
+      const ordenesCanceladas = body?.ordenesCanceladas ?? body.ordenes_canceladas ?? 0;
 
-      const er = body.estadisticasRendimiento || body.estadisticas_rendimiento || {};
+      const er = body?.estadisticasRendimiento || body?.estadisticas_rendimiento || {};
       let tasaCompletado = er.tasaCompletado ?? er.tasa_completado ?? 0;
       const horasPromedioResolucion = er.horasPromedioResolucion ?? er.horas_promedio_resolucion ?? 0;
       if ((!tasaCompletado || Number(tasaCompletado) === 0) && totalOrdenes > 0) {
         tasaCompletado = (ordenesCompletadas / totalOrdenes) * 100;
       }
 
-      const et2 = body.estadisticasTiempo || body.estadisticas_tiempo || {};
+      const et2 = body?.estadisticasTiempo || body?.estadisticas_tiempo || {};
       const ordenesEsteMes = et2.ordenesEsteMes ?? et2.ordenes_este_mes ?? 0;
 
       setTotalesOrd({
@@ -702,18 +703,18 @@ const totales = async (ispId) => {
 
       const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
 
-      const totalConfiguraciones = body.totalConfiguraciones ?? body.total_configuraciones ?? 0;
-      const configuracionesActivas = body.configuracionesActivas ?? body.configuraciones_activas ?? 0;
-      const configuracionesIncompletas = body.configuracionesIncompletas ?? body.configuraciones_incompletas ?? 0;
-      const cr = body.configuracionRed || body.configuracion_red || {};
-      const porcentajeConfigurado = cr.porcentajeConfigurado ?? cr.porcentaje_configurado ?? 0;
-      const et = body.estadisticasTiempo || body.estadisticas_tiempo || {};
-      const configuracionesEsteMes = et.configuracionesEsteMes ?? et.configuraciones_este_mes ?? 0;
-      const cpr = body.configuracionesPorRouter || body.configuraciones_por_router || {};
+      const totalConfiguraciones = body?.totalConfiguraciones ?? body?.total_configuraciones ?? 0;
+      const configuracionesActivas = body?.configuracionesActivas ?? body?.configuraciones_activas ?? 0;
+      const configuracionesIncompletas = body?.configuracionesIncompletas ?? body?.configuraciones_incompletas ?? 0;
+      const cr = body?.configuracionRed || body?.configuracion_red || {};
+      const porcentajeConfigurado = cr?.porcentajeConfigurado ?? cr?.porcentaje_configurado ?? 0;
+      const et = body?.estadisticasTiempo || body?.estadisticas_tiempo || {};
+      const configuracionesEsteMes = et?.configuracionesEsteMes ?? et?.configuraciones_este_mes ?? 0;
+      const cpr = body?.configuracionesPorRouter || body?.configuraciones_por_router || {};
 
       // Calcular top de routers por configuraciones
       const totalCfg = totalConfiguraciones || 0;
-      const routersTop = Object.entries(cpr)
+      const routersTop = Object.entries(cpr || {})
         .map(([name, count]) => ({ name, count: Number(count) || 0, pct: totalCfg > 0 ? (Number(count) * 100) / totalCfg : 0 }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5); // Top 5 routers
@@ -767,21 +768,21 @@ const totales = async (ispId) => {
 
       const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
 
-      const totalInstalaciones = body.totalInstalaciones ?? body.total_instalaciones ?? 0;
+      const totalInstalaciones = body?.totalInstalaciones ?? body.total_instalaciones ?? 0;
 
-      const et = body.estadisticasTiempo || body.estadisticas_tiempo || {};
+      const et = body?.estadisticasTiempo || body?.estadisticas_tiempo || {};
       const estadisticasTiempo = {
         instalacionesEsteMes: et.instalacionesEsteMes ?? et.instalaciones_este_mes ?? et.esteMes ?? 0,
         instalacionesHoy: et.instalacionesHoy ?? et.instalaciones_hoy ?? et.hoy ?? 0,
       };
 
-      const tr = body.tracking || body.seguimiento || {};
+      const tr = body?.tracking || body?.seguimiento || {};
       const tracking = {
         conUbicacion: tr.conUbicacion ?? tr.con_ubicacion ?? tr.geo_ok ?? 0,
         sinUbicacion: tr.sinUbicacion ?? tr.sin_ubicacion ?? tr.geo_faltante ?? 0,
       };
 
-      const eq = body.equipos || body.equipamiento || {};
+      const eq = body?.equipos || body?.equipamiento || {};
       const equipos = {
         configuradas: eq.configuradas ?? eq.equiposConfigurados ?? eq.config_ok ?? 0,
         sinConfig: eq.sinConfig ?? eq.equiposSinConfig ?? eq.config_faltante ?? 0,
@@ -821,10 +822,10 @@ const totales = async (ispId) => {
       }
 
       const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
-      const totalUsuarios = body.totalUsuarios ?? body.total_usuarios ?? 0;
-      const activos = body.activos ?? body.usuariosActivos ?? body.usuarios_activos ?? 0;
-      const inactivos = body.inactivos ?? body.usuariosInactivos ?? body.usuarios_inactivos ?? 0;
-      const roles = body.roles || {};
+      const totalUsuarios = body?.totalUsuarios ?? body.total_usuarios ?? 0;
+      const activos = body?.activos ?? body?.usuariosActivos ?? body?.usuarios_activos ?? 0;
+      const inactivos = body?.inactivos ?? body?.usuariosInactivos ?? body?.usuarios_inactivos ?? 0;
+      const roles = body?.roles || {};
 
       setTotalesUsr({ totalUsuarios, activos, inactivos, roles });
       console.log('✅ Totales usuarios:', { totalUsuarios, activos, inactivos });
@@ -861,6 +862,7 @@ const totales = async (ispId) => {
               rangoPrecios: { minimo: 0, maximo: 0 },
             },
             serviciosAdicionales: { total: 0, activos: 0, inactivos: 0 },
+            planes: [],
           });
         }
         try { payload = JSON.parse(payload); } catch { payload = {}; }
@@ -868,12 +870,12 @@ const totales = async (ispId) => {
 
       const body = (payload && payload.data && typeof payload.data === 'object') ? payload.data : payload;
 
-      const totalServicios = body.totalServicios ?? body.total_servicios ?? 0;
-      const totalSuscripciones = body.totalSuscripciones ?? body.total_suscripciones ?? 0;
-      const precioPromedio = body.precioPromedio ?? body.precio_promedio ?? 0;
-      const ingresoEstimadoMensual = body.ingresoEstimadoMensual ?? body.ingreso_estimado_mensual ?? 0;
+      const totalServicios = body?.totalServicios ?? body?.total_servicios ?? 0;
+      const totalSuscripciones = body?.totalSuscripciones ?? body?.total_suscripciones ?? 0;
+      const precioPromedio = body?.precioPromedio ?? body?.precio_promedio ?? 0;
+      const ingresoEstimadoMensual = body?.ingresoEstimadoMensual ?? body?.ingreso_estimado_mensual ?? 0;
 
-      const est = body.estadisticas || {};
+      const est = body?.estadisticas || {};
       const estadisticas = {
         serviciosConUso: est.serviciosConUso ?? est.servicios_con_uso ?? 0,
         serviciosSinUso: est.serviciosSinUso ?? est.servicios_sin_uso ?? 0,
@@ -884,15 +886,18 @@ const totales = async (ispId) => {
         },
       };
 
-      const servAd = body.serviciosAdicionales ?? body.servicios_adicionales ?? {};
+      const servAd = body?.serviciosAdicionales ?? body?.servicios_adicionales ?? {};
       const serviciosAdicionales = {
         total: servAd.total ?? 0,
         activos: servAd.activos ?? 0,
         inactivos: servAd.inactivos ?? 0,
       };
 
-      setTotalesServ({ totalServicios, totalSuscripciones, precioPromedio, ingresoEstimadoMensual, estadisticas, serviciosAdicionales });
-      console.log('✅ Totales servicios:', { totalServicios, totalSuscripciones, precioPromedio, ingresoEstimadoMensual });
+      // Extraer lista de planes/servicios
+      const planes = body?.servicios ?? body?.planes ?? body?.listadoServicios ?? body?.listado_servicios ?? [];
+
+      setTotalesServ({ totalServicios, totalSuscripciones, precioPromedio, ingresoEstimadoMensual, estadisticas, serviciosAdicionales, planes });
+      console.log('✅ Totales servicios:', { totalServicios, totalSuscripciones, precioPromedio, ingresoEstimadoMensual, totalPlanes: planes.length });
     } catch (e) {
       console.error('❌ Error en totales-servicios:', e.message);
       setTotalesServ({
@@ -907,6 +912,7 @@ const totales = async (ispId) => {
           rangoPrecios: { minimo: 0, maximo: 0 },
         },
         serviciosAdicionales: { total: 0, activos: 0, inactivos: 0 },
+        planes: [],
       });
     }
   };
@@ -1228,9 +1234,9 @@ const botonesData = [
     if (!esOperador) {
       if (btn.id === '2') {
         // Restaurar el título con el formato de texto anterior (mismas letras)
-        btn.title = `Clientes\n\nTotal: ${totalesIsp.totalClientes || 0}\n\nActivos: ${totalesIsp.clientesActivos || 0}\nFact. Vencidas: ${totalesIsp.totalFacturasVencidasActivos || 0}\n\nInactivos: ${totalesIsp.clientesInactivos || 0}\nFact. Vencidas: ${totalesIsp.totalFacturasVencidasInactivos || 0}`;
+        btn.title = `Clientes\n\nTotal: ${totalesIsp?.totalClientes || 0}\n\nActivos: ${totalesIsp?.clientesActivos || 0}\nFact. Vencidas: ${totalesIsp?.totalFacturasVencidasActivos || 0}\n\nInactivos: ${totalesIsp?.clientesInactivos || 0}\nFact. Vencidas: ${totalesIsp?.totalFacturasVencidasInactivos || 0}`;
       } else if (btn.id === '1') {
-        btn.title = `Facturaciones\n\nFacturas Vencidas: ${totalesIsp.totalFacturasVencidas || 0}`;
+        btn.title = `Facturaciones\n\nFacturas Vencidas: ${totalesIsp?.totalFacturasVencidas || 0}`;
       }
     }
   });
@@ -1322,9 +1328,9 @@ const botonesData = [
               </View>
               <Text style={styles.statsTitle}>Clientes</Text>
             </View>
-            <Text style={styles.statsValue}>{totalesIsp.totalClientes}</Text>
+            <Text style={styles.statsValue}>{totalesIsp?.totalClientes || 0}</Text>
             <Text style={styles.statsSubtext}>
-              {totalesIsp.clientesActivos} activos • {totalesIsp.clientesInactivos} inactivos
+              {totalesIsp?.clientesActivos || 0} activos • {totalesIsp?.clientesInactivos || 0} inactivos
             </Text>
           </View>
 
@@ -1335,9 +1341,9 @@ const botonesData = [
               </View>
               <Text style={styles.statsTitle}>Fact. Vencidas</Text>
             </View>
-            <Text style={styles.statsValue}>{totalesIsp.totalFacturasVencidas}</Text>
+            <Text style={styles.statsValue}>{totalesIsp?.totalFacturasVencidas || 0}</Text>
             <Text style={styles.statsSubtext}>
-              {totalesIsp.totalFacturasVencidasActivos} activos • {totalesIsp.totalFacturasVencidasInactivos} inactivos
+              {totalesIsp?.totalFacturasVencidasActivos || 0} activos • {totalesIsp?.totalFacturasVencidasInactivos || 0} inactivos
             </Text>
           </View>
         </View>
@@ -1351,9 +1357,9 @@ const botonesData = [
               </View>
               <Text style={styles.statsTitle}>Conexiones</Text>
             </View>
-            <Text style={styles.statsValue}>{totalesCon.totalConexiones}</Text>
+            <Text style={styles.statsValue}>{totalesCon?.totalConexiones || 0}</Text>
             <Text style={styles.statsSubtext}>
-              {totalesCon.conexionesActivas} activas • {totalesCon.conexionesInactivas} inactivas
+              {totalesCon?.conexionesActivas || 0} activas • {totalesCon?.conexionesInactivas || 0} inactivas
             </Text>
           </View>
 
@@ -1364,9 +1370,9 @@ const botonesData = [
               </View>
               <Text style={styles.statsTitle}>Ciclos</Text>
             </View>
-            <Text style={styles.statsValue}>{totalesCic.totalCiclos}</Text>
+            <Text style={styles.statsValue}>{totalesCic?.totalCiclos || 0}</Text>
             <Text style={styles.statsSubtext}>
-              {totalesCic.ciclosVigentes} vigentes • {totalesCic.ciclosCerrados} cerrados
+              {totalesCic?.ciclosVigentes || 0} vigentes • {totalesCic?.ciclosCerrados || 0} cerrados
             </Text>
           </View>
         </View>
@@ -1380,9 +1386,9 @@ const botonesData = [
               </View>
               <Text style={styles.statsTitle}>SMS</Text>
             </View>
-            <Text style={styles.statsValue}>{totalesSms.totalSmsEnviados}</Text>
+            <Text style={styles.statsValue}>{totalesSms?.totalSmsEnviados || 0}</Text>
             <Text style={styles.statsSubtext}>
-              {totalesSms.smsExitosos} exitosos • {totalesSms.smsFallidos} fallidos
+              {totalesSms?.smsExitosos || 0} exitosos • {totalesSms?.smsFallidos || 0} fallidos
             </Text>
           </View>
 
@@ -1393,9 +1399,9 @@ const botonesData = [
               </View>
               <Text style={styles.statsTitle}>Órdenes</Text>
             </View>
-            <Text style={styles.statsValue}>{totalesOrd.totalOrdenes}</Text>
+            <Text style={styles.statsValue}>{totalesOrd?.totalOrdenes || 0}</Text>
             <Text style={styles.statsSubtext}>
-              {totalesOrd.ordenesPendientes} pendientes • {totalesOrd.ordenesCompletadas} completadas
+              {totalesOrd?.ordenesPendientes || 0} pendientes • {totalesOrd?.ordenesCompletadas || 0} completadas
             </Text>
           </View>
         </View>
@@ -1409,9 +1415,9 @@ const botonesData = [
               </View>
               <Text style={styles.statsTitle}>Configuraciones</Text>
             </View>
-            <Text style={styles.statsValue}>{totalesCfg.totalConfiguraciones}</Text>
+            <Text style={styles.statsValue}>{totalesCfg?.totalConfiguraciones || 0}</Text>
             <Text style={styles.statsSubtext}>
-              {totalesCfg.configuracionesActivas} activas • {totalesCfg.configuracionesIncompletas} incompletas
+              {totalesCfg?.configuracionesActivas || 0} activas • {totalesCfg?.configuracionesIncompletas || 0} incompletas
             </Text>
           </View>
 
@@ -1422,9 +1428,9 @@ const botonesData = [
               </View>
               <Text style={styles.statsTitle}>Instalaciones</Text>
             </View>
-            <Text style={styles.statsValue}>{totalesInst.totalInstalaciones}</Text>
+            <Text style={styles.statsValue}>{totalesInst?.totalInstalaciones || 0}</Text>
             <Text style={styles.statsSubtext}>
-              {totalesInst.equipos.configuradas} config. • {totalesInst.equipos.sinConfig} sin config.
+              {totalesInst?.equipos?.configuradas || 0} config. • {totalesInst?.equipos?.sinConfig || 0} sin config.
             </Text>
           </View>
         </View>
@@ -1557,68 +1563,68 @@ const botonesData = [
 
         {!esOperador && item.id === '2' && (
           <ClientsSummaryCard
-            totalClients={totalesIsp.totalClientes || 0}
-            activeClients={totalesIsp.clientesActivos || 0}
-            inactiveClients={totalesIsp.clientesInactivos || 0}
-            overdueActive={totalesIsp.totalFacturasVencidasActivos || 0}
-            overdueInactive={totalesIsp.totalFacturasVencidasInactivos || 0}
+            totalClients={totalesIsp?.totalClientes || 0}
+            activeClients={totalesIsp?.clientesActivos || 0}
+            inactiveClients={totalesIsp?.clientesInactivos || 0}
+            overdueActive={totalesIsp?.totalFacturasVencidasActivos || 0}
+            overdueInactive={totalesIsp?.totalFacturasVencidasInactivos || 0}
             theme={{ styles, isDarkMode }}
           />
         )}
 
         {!esOperador && item.id === '7' && (
           <ConnectionsSummaryCard
-            totalConnections={totalesCon.totalConexiones || 0}
-            active={totalesCon.conexionesActivas || 0}
-            suspended={totalesCon.conexionesSuspendidas || 0}
-            inactive={totalesCon.conexionesInactivas || 0}
+            totalConnections={totalesCon?.totalConexiones || 0}
+            active={totalesCon?.conexionesActivas || 0}
+            suspended={totalesCon?.conexionesSuspendidas || 0}
+            inactive={totalesCon?.conexionesInactivas || 0}
             theme={{ styles, isDarkMode }}
           />
         )}
 
         {!esOperador && item.id === '1' && (
           <BillingSummaryCard
-            totalCycles={totalesCic.totalCiclos || 0}
-            activeCycles={totalesCic.ciclosVigentes || 0}
-            closedCycles={totalesCic.ciclosCerrados || 0}
-            overdueCycles={totalesCic.ciclosVencidos || 0}
-            collectedPercent={totalesCic.resumenFinanciero?.dineroRecaudadoPorcentaje || 0}
-            pendingAmount={totalesCic.resumenFinanciero?.dineroPendiente || 0}
+            totalCycles={totalesCic?.totalCiclos || 0}
+            activeCycles={totalesCic?.ciclosVigentes || 0}
+            closedCycles={totalesCic?.ciclosCerrados || 0}
+            overdueCycles={totalesCic?.ciclosVencidos || 0}
+            collectedPercent={totalesCic?.resumenFinanciero?.dineroRecaudadoPorcentaje || 0}
+            pendingAmount={totalesCic?.resumenFinanciero?.dineroPendiente || 0}
             theme={{ styles, isDarkMode }}
           />
         )}
 
         {!esOperador && item.id === '16' && (
           <SmsSummaryCard
-            totalEnviados={totalesSms.totalSmsEnviados || 0}
-            tasaExito={Number(totalesSms.estadisticasEnvio?.tasaExito || 0)}
-            costoTotal={Number(totalesSms.resumenFinanciero?.costoTotal || 0)}
-            entrantes={totalesSms.interactividad?.mensajesEntrantes || 0}
-            enviadosEsteMes={totalesSms.estadisticasTiempo?.smsEsteMes || 0}
-            enviadosHoy={totalesSms.estadisticasTiempo?.smsHoy || 0}
+            totalEnviados={totalesSms?.totalSmsEnviados || 0}
+            tasaExito={Number(totalesSms?.estadisticasEnvio?.tasaExito || 0)}
+            costoTotal={Number(totalesSms?.resumenFinanciero?.costoTotal || 0)}
+            entrantes={totalesSms?.interactividad?.mensajesEntrantes || 0}
+            enviadosEsteMes={totalesSms?.estadisticasTiempo?.smsEsteMes || 0}
+            enviadosHoy={totalesSms?.estadisticasTiempo?.smsHoy || 0}
             theme={{ styles, isDarkMode }}
           />
         )}
 
         {!esOperador && item.id === '17' && (
           <InstallationsSummaryCard
-            totalInstalaciones={totalesInst.totalInstalaciones || 0}
-            instalacionesMes={totalesInst.estadisticasTiempo?.instalacionesEsteMes || 0}
-            instalacionesHoy={totalesInst.estadisticasTiempo?.instalacionesHoy || 0}
+            totalInstalaciones={totalesInst?.totalInstalaciones || 0}
+            instalacionesMes={totalesInst?.estadisticasTiempo?.instalacionesEsteMes || 0}
+            instalacionesHoy={totalesInst?.estadisticasTiempo?.instalacionesHoy || 0}
             theme={{ styles, isDarkMode }}
           />
         )}
 
         {!esOperador && item.id === '6' && (() => {
-          const rolesEntries = Object.entries(totalesUsr.roles || {}).map(([nombre, cantidad]) => ({
+          const rolesEntries = Object.entries(totalesUsr?.roles || {}).map(([nombre, cantidad]) => ({
             nombre,
             cantidad: Number(cantidad) || 0,
           }));
           return (
             <UsersSummaryCard
-              totalUsuarios={totalesUsr.totalUsuarios || 0}
-              activos={totalesUsr.activos || 0}
-              inactivos={totalesUsr.inactivos || 0}
+              totalUsuarios={totalesUsr?.totalUsuarios || 0}
+              activos={totalesUsr?.activos || 0}
+              inactivos={totalesUsr?.inactivos || 0}
               rolesTop={rolesEntries}
               theme={{ styles, isDarkMode }}
             />
@@ -1627,32 +1633,38 @@ const botonesData = [
 
         {!esOperador && item.id === '3' && (
           <ServicesSummaryCard
-            totalPlanes={totalesServ.totalServicios || 0}
-            totalSuscripciones={totalesServ.totalSuscripciones || 0}
-            precioPromedio={Number(totalesServ.precioPromedio || 0)}
-            ingresoMensual={Number(totalesServ.ingresoEstimadoMensual || 0)}
-            planMasPopular={totalesServ.estadisticas?.servicioMasPopular || null}
+            totalPlanes={totalesServ?.totalServicios || 0}
+            totalSuscripciones={totalesServ?.totalSuscripciones || 0}
+            precioPromedio={Number(totalesServ?.precioPromedio || 0)}
+            ingresoMensual={Number(totalesServ?.ingresoEstimadoMensual || 0)}
+            planMasPopular={totalesServ?.estadisticas?.servicioMasPopular || null}
+            planesDetalle={(totalesServ?.planes || []).map((plan, idx) => ({
+              id: plan.id ?? plan.id_servicio ?? plan.id_plan ?? idx,
+              nombre: plan.nombre ?? plan.descripcion ?? 'Plan sin nombre',
+              precio: Number(plan.precio ?? plan.precio_mensual ?? plan.costo ?? 0),
+              suscripciones: Number(plan.suscripciones ?? plan.conexiones ?? plan.cantidad_suscripciones ?? 0),
+            }))}
             theme={{ styles, isDarkMode }}
           />
         )}
 
         {!esOperador && item.id === '10' && (
           <ConfigurationsSummaryCard
-            totalConfiguraciones={totalesCfg.totalConfiguraciones || 0}
-            eficiencia={Number(totalesCfg.configuracionRed?.porcentajeConfigurado || 0)}
-            configuracionesEsteMes={totalesCfg.estadisticasTiempo?.configuracionesEsteMes || 0}
-            routersTop={totalesCfg.routersTop || []}
+            totalConfiguraciones={totalesCfg?.totalConfiguraciones || 0}
+            eficiencia={Number(totalesCfg?.configuracionRed?.porcentajeConfigurado || 0)}
+            configuracionesEsteMes={totalesCfg?.estadisticasTiempo?.configuracionesEsteMes || 0}
+            routersTop={totalesCfg?.routersTop || []}
             theme={{ styles, isDarkMode }}
           />
         )}
 
         {!esOperador && item.id === '11' && (
           <ServiceOrdersSummaryCard
-            totalOrdenes={totalesOrd.totalOrdenes || 0}
-            tasaCompletado={Number(totalesOrd.estadisticasRendimiento?.tasaCompletado || 0)}
-            promedioResolucionDias={Number(totalesOrd.estadisticasRendimiento?.horasPromedioResolucion || 0) / 24}
-            backlog={totalesOrd.ordenesPendientes || 0}
-            ordenesEsteMes={totalesOrd.estadisticasTiempo?.ordenesEsteMes || 0}
+            totalOrdenes={totalesOrd?.totalOrdenes || 0}
+            tasaCompletado={Number(totalesOrd?.estadisticasRendimiento?.tasaCompletado || 0)}
+            promedioResolucionDias={Number(totalesOrd?.estadisticasRendimiento?.horasPromedioResolucion || 0) / 24}
+            backlog={totalesOrd?.ordenesPendientes || 0}
+            ordenesEsteMes={totalesOrd?.estadisticasTiempo?.ordenesEsteMes || 0}
             theme={{ styles, isDarkMode }}
           />
         )}
