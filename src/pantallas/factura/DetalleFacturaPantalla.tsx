@@ -135,6 +135,9 @@ async function handlePrintFactura(facturaData, selectedPrinter, Alert, idUsuario
 
     facturaData.articulos.forEach((articulo) => {
         facturaString += `${articulo.descripcion}\n`;
+        if (articulo.direccion_conexion) {
+            facturaString += `  ${articulo.direccion_conexion}\n`;
+        }
         facturaString += formatLine(
             ` ${articulo.cantidad_articulo}`,
             formatCurrency(articulo.cantidad_articulo * articulo.precio_unitario)
@@ -296,13 +299,20 @@ Tipo de Corte: ${facturaData?.ciclo?.tipo_corte?.toUpperCase() || 'N/A'}
 
     // Agregar artículos
     facturaData?.articulos?.forEach((item, index) => {
-        const cantidad = parseFloat(item.cantidad_articulo) % 1 === 0 
-            ? parseFloat(item.cantidad_articulo).toFixed(0) 
+        const cantidad = parseFloat(item.cantidad_articulo) % 1 === 0
+            ? parseFloat(item.cantidad_articulo).toFixed(0)
             : item.cantidad_articulo;
         const importe = item.cantidad_articulo * item.precio_unitario;
-        
+
         facturaText += `
-${index + 1}. ${item.descripcion}
+${index + 1}. ${item.descripcion}`;
+
+        if (item.direccion_conexion) {
+            facturaText += `
+   📍 ${item.direccion_conexion}`;
+        }
+
+        facturaText += `
    Cant: ${cantidad} x ${formatMoney(item.precio_unitario)} = ${formatMoney(importe)}`;
     });
 

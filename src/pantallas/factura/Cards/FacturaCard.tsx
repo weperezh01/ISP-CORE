@@ -101,14 +101,29 @@ const FacturaCard = ({ facturaData, isDarkMode, styles, formatMoney }) => {
                                     <Text style={[styles.tableCell, { width: 80 }]}>
                                         {formatQuantity(item.cantidad_articulo)}
                                     </Text>
-                                    <Text 
-                                        style={[styles.tableCell, { width: 220, textAlign: 'left', paddingRight: 8 }]} 
-                                        numberOfLines={3}
-                                        adjustsFontSizeToFit={true}
-                                        minimumFontScale={0.8}
-                                    >
-                                        {item.descripcion}
-                                    </Text>
+                                    <View style={{ width: 220, paddingRight: 8 }}>
+                                        <Text
+                                            style={[styles.tableCell, { textAlign: 'left' }]}
+                                            numberOfLines={2}
+                                            adjustsFontSizeToFit={true}
+                                            minimumFontScale={0.8}
+                                        >
+                                            {item.descripcion}
+                                        </Text>
+                                        {item.direccion_conexion && (
+                                            <Text
+                                                style={[styles.tableCell, {
+                                                    textAlign: 'left',
+                                                    fontSize: 10,
+                                                    opacity: 0.7,
+                                                    marginTop: 2
+                                                }]}
+                                                numberOfLines={2}
+                                            >
+                                                📍 {item.direccion_conexion}
+                                            </Text>
+                                        )}
+                                    </View>
                                     <Text style={[styles.tableCellAmount, { width: 110 }]}>
                                         {formatMoney(item.precio_unitario)}
                                     </Text>
