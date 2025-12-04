@@ -12,7 +12,35 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../../../ThemeContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import LinearGradient from 'react-native-linear-gradient';
 import { ACCOUNTING_PLANS, AccountingPlan, calculateAccountingAnnualSavings } from '../config/accountingPlans';
+
+const FEATURE_PRODUCTS = [
+    {
+        id: 'contabilidad',
+        title: 'Contabilidad Inteligente',
+        description: 'Automatiza estados financieros, conciliaciones y reportes fiscales.',
+        icon: 'receipt-long',
+        accent: '#3B82F6',
+        availability: 'Suscripción disponible'
+    },
+    {
+        id: 'sms-engagement',
+        title: 'Engagement SMS',
+        description: 'Segmenta audiencias y crea campañas omnicanal con seguimiento en tiempo real.',
+        icon: 'sms',
+        accent: '#8B5CF6',
+        availability: 'Próximamente'
+    },
+    {
+        id: 'automation-suite',
+        title: 'Automation Suite',
+        description: 'Flujos automáticos para cobranza, onboarding y retención de clientes.',
+        icon: 'flash-on',
+        accent: '#F97316',
+        availability: 'En desarrollo'
+    }
+];
 
 const { width } = Dimensions.get('window');
 
@@ -114,6 +142,18 @@ const ContabilidadSuscripcionScreen = ({ route, navigation }) => {
             console.error('Error loading user data:', error);
             Alert.alert('Error', 'Error al cargar datos del usuario');
         }
+    };
+
+    const handleExploreProduct = (productId) => {
+        if (productId === 'contabilidad') {
+            if (isSubscribed) {
+                navigation.navigate('ContabilidadDashboardSuscripcion', { ispId: route.params?.ispId || ispId });
+            } else {
+                setShowConfirmModal(true);
+            }
+            return;
+        }
+        Alert.alert('Próximamente', 'Estamos preparando este producto. Regresa pronto para más novedades.');
     };
 
     const loadAvailablePlans = async () => {
@@ -480,6 +520,135 @@ const ContabilidadSuscripcionScreen = ({ route, navigation }) => {
         content: {
             flex: 1,
             padding: 16,
+        },
+        heroSection: {
+            paddingHorizontal: 12,
+            paddingTop: 4,
+            paddingBottom: 12,
+        },
+        heroCard: {
+            borderRadius: 24,
+            padding: 20,
+        },
+        heroBadge: {
+            color: isDarkMode ? '#DBEAFE' : '#1E3A8A',
+            fontSize: 12,
+            fontWeight: '700',
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+            marginBottom: 10,
+        },
+        heroTitle: {
+            fontSize: 24,
+            fontWeight: '800',
+            color: isDarkMode ? '#FFFFFF' : '#0F172A',
+            marginBottom: 8,
+        },
+        heroSubtitle: {
+            fontSize: 14,
+            color: isDarkMode ? 'rgba(255,255,255,0.85)' : 'rgba(15,23,42,0.85)',
+            lineHeight: 20,
+            marginBottom: 16,
+        },
+        heroStatsRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginBottom: 14,
+        },
+        heroStat: {
+            flex: 1,
+            paddingRight: 10,
+        },
+        heroStatValue: {
+            fontSize: 20,
+            fontWeight: '700',
+            color: isDarkMode ? '#FFFFFF' : '#0F172A',
+        },
+        heroStatLabel: {
+            fontSize: 12,
+            color: isDarkMode ? 'rgba(255,255,255,0.75)' : 'rgba(31,41,55,0.75)',
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+        },
+        heroActions: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+        },
+        heroPrimaryButton: {
+            backgroundColor: '#FFFFFF',
+            borderRadius: 999,
+            paddingVertical: 10,
+            paddingHorizontal: 18,
+            marginRight: 12,
+            marginBottom: 10,
+        },
+        heroPrimaryText: {
+            color: '#1D4ED8',
+            fontWeight: '700',
+        },
+        heroSecondaryButton: {
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: isDarkMode ? 'rgba(255,255,255,0.6)' : '#1E3A8A',
+            paddingVertical: 10,
+            paddingHorizontal: 18,
+            marginBottom: 10,
+        },
+        heroSecondaryText: {
+            color: isDarkMode ? '#FFFFFF' : '#1E3A8A',
+            fontWeight: '600',
+        },
+        productsSection: {
+            paddingHorizontal: 12,
+            paddingBottom: 16,
+        },
+        productGrid: {
+            marginTop: 12,
+        },
+        productCard: {
+            borderWidth: 1,
+            borderRadius: 18,
+            padding: 16,
+            marginBottom: 12,
+        },
+        productCardHeader: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 10,
+        },
+        productIconWrapper: {
+            width: 44,
+            height: 44,
+            borderRadius: 14,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        productStatusChip: {
+            fontSize: 12,
+            fontWeight: '700',
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 999,
+        },
+        productTitle: {
+            fontSize: 18,
+            fontWeight: '700',
+            marginBottom: 6,
+        },
+        productDescription: {
+            fontSize: 14,
+            lineHeight: 20,
+            marginBottom: 12,
+        },
+        productActionRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+        },
+        productActionText: {
+            fontSize: 15,
+            fontWeight: '700',
         },
         serviceStatusSection: {
             marginBottom: 24,
@@ -952,7 +1121,7 @@ const ContabilidadSuscripcionScreen = ({ route, navigation }) => {
                         >
                             <Icon name="arrow_back" size={24} color={isDarkMode ? '#F9FAFB' : '#1F2937'} />
                         </TouchableOpacity>
-                        <Text style={styles.headerTitle}>Suscripción Contabilidad</Text>
+                        <Text style={styles.headerTitle}>Suscripciones</Text>
                         <View style={{ width: 40 }} />
                     </View>
                 </View>
@@ -975,7 +1144,7 @@ const ContabilidadSuscripcionScreen = ({ route, navigation }) => {
                     >
                         <Icon name="arrow_back" size={24} color={isDarkMode ? '#F9FAFB' : '#1F2937'} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Servicio de Contabilidad</Text>
+                    <Text style={styles.headerTitle}>Suscripciones</Text>
                     {isSubscribed && (
                         <TouchableOpacity 
                             style={styles.dashboardButton}
@@ -989,6 +1158,107 @@ const ContabilidadSuscripcionScreen = ({ route, navigation }) => {
             </View>
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                {/* Hero Section */}
+                <View style={styles.heroSection}>
+                    <LinearGradient
+                        colors={isDarkMode ? ['#0f172a', '#1d4ed8'] : ['#eff6ff', '#93c5fd']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.heroCard}
+                    >
+                        <Text style={styles.heroBadge}>Centro de suscripciones</Text>
+                        <Text style={styles.heroTitle}>Expande tu portafolio digital</Text>
+                        <Text style={styles.heroSubtitle}>
+                            Gestiona servicios financieros, engagement y automatización desde un solo lugar.
+                        </Text>
+
+                        <View style={styles.heroStatsRow}>
+                            <View style={styles.heroStat}>
+                                <Text style={styles.heroStatValue}>{availablePlans.length}</Text>
+                                <Text style={styles.heroStatLabel}>Planes activos</Text>
+                            </View>
+                            <View style={styles.heroStat}>
+                                <Text style={styles.heroStatValue}>{userCount}</Text>
+                                <Text style={styles.heroStatLabel}>Usuarios en tu equipo</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.heroActions}>
+                            <TouchableOpacity
+                                style={styles.heroPrimaryButton}
+                                onPress={() => {
+                                    if (isSubscribed) {
+                                        navigation.navigate('ContabilidadDashboardSuscripcion', { ispId: route.params?.ispId || ispId });
+                                    } else {
+                                        setShowConfirmModal(true);
+                                    }
+                                }}
+                            >
+                                <Text style={styles.heroPrimaryText}>
+                                    {isSubscribed ? 'Ver suscripción activa' : 'Activar contabilidad'}
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.heroSecondaryButton}
+                                onPress={() => Alert.alert('Habla con nuestro equipo', 'Un asesor comercial te contactará para mostrarte las nuevas suscripciones.')}
+                            >
+                                <Text style={styles.heroSecondaryText}>Hablar con un asesor</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </LinearGradient>
+                </View>
+
+                {/* Products Section */}
+                <View style={styles.productsSection}>
+                    <Text style={styles.sectionTitle}>Explora otros productos</Text>
+                    <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#94A3B8' : '#4B5563', textAlign: 'left', fontStyle: 'normal' }]}>
+                        Combina herramientas para acelerar ventas, automatizar operaciones y fidelizar clientes.
+                    </Text>
+
+                    <View style={styles.productGrid}>
+                        {FEATURE_PRODUCTS.map((product) => {
+                            const isMainProduct = product.id === 'contabilidad';
+                            const statusLabel = isMainProduct
+                                ? (isSubscribed ? 'Suscripción activa' : 'Disponible ahora')
+                                : product.availability;
+                            const actionLabel = isMainProduct
+                                ? (isSubscribed ? 'Ir al dashboard' : 'Activar')
+                                : 'Notificarme';
+                            return (
+                                <TouchableOpacity
+                                    key={product.id}
+                                    style={[
+                                        styles.productCard,
+                                        {
+                                            backgroundColor: isDarkMode ? '#0f172a' : '#FFFFFF',
+                                            borderColor: `${product.accent}33`,
+                                        },
+                                    ]}
+                                    activeOpacity={0.9}
+                                    onPress={() => handleExploreProduct(product.id)}
+                                >
+                                    <View style={styles.productCardHeader}>
+                                        <View style={[styles.productIconWrapper, { backgroundColor: `${product.accent}20` }]}>
+                                            <Icon name={product.icon} size={24} color={product.accent} />
+                                        </View>
+                                        <Text style={[styles.productStatusChip, { color: product.accent, backgroundColor: `${product.accent}26` }]}>
+                                            {statusLabel}
+                                        </Text>
+                                    </View>
+                                    <Text style={[styles.productTitle, { color: isDarkMode ? '#F8FAFC' : '#0F172A' }]}>{product.title}</Text>
+                                    <Text style={[styles.productDescription, { color: isDarkMode ? '#CBD5F5' : '#475569' }]}>
+                                        {product.description}
+                                    </Text>
+                                    <View style={styles.productActionRow}>
+                                        <Text style={[styles.productActionText, { color: product.accent }]}>{actionLabel}</Text>
+                                        <Icon name="arrow-forward" size={18} color={product.accent} />
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                </View>
+
                 {/* Service Status Section */}
                 <View style={styles.serviceStatusSection}>
                     <View style={[styles.statusCard, { backgroundColor: isDarkMode ? '#1F2937' : '#FFFFFF' }]}>
@@ -1000,7 +1270,7 @@ const ContabilidadSuscripcionScreen = ({ route, navigation }) => {
                             />
                             <View style={styles.statusInfo}>
                                 <Text style={[styles.statusTitle, { color: isDarkMode ? '#F9FAFB' : '#1F2937' }]}>
-                                    Servicio de Contabilidad
+                                    Suscripción de Contabilidad
                                 </Text>
                                 <Text style={[styles.statusSubtitle, { color: isSubscribed ? '#10B981' : '#6B7280' }]}>
                                     {isSubscribed ? 'Activo' : 'Inactivo'}
@@ -1064,9 +1334,9 @@ const ContabilidadSuscripcionScreen = ({ route, navigation }) => {
 
                 {/* All Plans Section - Informative */}
                 <View style={styles.allPlansSection}>
-                    <Text style={styles.sectionTitle}>Planes de Contabilidad Disponibles</Text>
+                    <Text style={styles.sectionTitle}>Planes de suscripción disponibles</Text>
                     <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
-                        Información de todos los planes disponibles. Tu plan se asigna automáticamente según el número de usuarios.
+                        Conoce todas las opciones que puedes activar y cambia cuando tu equipo lo necesite.
                     </Text>
                     
                     {availablePlans.map((plan, index) => (

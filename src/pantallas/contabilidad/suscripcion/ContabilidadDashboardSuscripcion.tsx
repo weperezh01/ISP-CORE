@@ -268,7 +268,7 @@ const ContabilidadDashboardSuscripcion = ({ route, navigation }) => {
                     
                     <TouchableOpacity 
                         style={[styles.historyButton, { borderColor: isDarkMode ? '#4B5563' : '#D1D5DB' }]}
-                        onPress={() => navigation.navigate('ContabilidadBillingHistoryScreen', { ispId })}
+                        onPress={() => navigation.navigate('IspTransactionHistoryScreen', { ispId })}
                     >
                         <Text style={[styles.historyButtonText, { color: isDarkMode ? '#9CA3AF' : '#6B7280' }]}>
                             Ver Historial de Facturación

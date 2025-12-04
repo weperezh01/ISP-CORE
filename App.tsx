@@ -594,6 +594,7 @@ const App = () => {
               <Stack.Screen name="IspOwnerBillingDashboard" component={IspOwnerBillingDashboard} options={{ headerShown: false }} />
               <Stack.Screen name="InvoiceDetailsScreen" component={InvoiceDetailsScreen} options={{ headerShown: false }} />
               <Stack.Screen name="CompanySettingsScreen" component={CompanySettingsScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="BillingHistoryScreen" component={IspTransactionHistoryScreen} options={{ headerShown: false }} />
               <Stack.Screen name="IspTransactionHistoryScreen" component={IspTransactionHistoryScreen} options={{ headerShown: false }} />
               
               {/* Pantallas de sistema de pagos reales */}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, Alert, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -6,64 +6,24 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 import MenuModal from '../componentes/MenuModal';
 import styles from './BaseCicloScreenStyle';
 import HorizontalMenu from '../componentes/HorizontalMenu';
+import { useTheme } from '../../ThemeContext';
 
 const BaseCicloScreen = () => {
-    const botones = [
-        { id: '4', screen: null, action: () => setMenuVisible(true), icon: 'bars' },
-        // { id: '6', action: () => setMenuVisible(true), icon: 'bars' },
-        { id: '5', screen: 'BusquedaScreen', icon: 'search' },
-        { id: '1', icon: 'plus', action: () => openAddModal() }, // Botón para abrir el modal de agregar
-        { id: '2', title: 'Revisiones', screen: 'FacturasEnRevisionScreen', params: { estado: 'en_revision' } },
-        { id: '3', title: 'Ingresos', screen: 'IngresosScreen' },
-        {
-            id: '7',
-            screen: null, // Dejarlo en null si solo realiza una acción
-            icon: isDarkMode ? 'sun-o' : 'moon-o', // Cambiar entre 'sun-o' y 'moon-o' basado en isDarkMode
-            action: () => {
-              toggleTheme(); // Lógica para cambiar el modo oscuro (debes tener esta función definida)
-            },
-          },
-    ];
-
-
-
-    // const botones = [
-    //     { id: '5', screen: 'BusquedaScreen', icon: 'search' }, // Botón de búsqueda
-    //     { id: '1', title: 'Base de ciclos', screen: 'BaseCicloScreen' },
-    //     { id: '2', title: 'Revisiones', screen: 'FacturasEnRevisionScreen', params: { estado: 'en_revision' } },
-    //     { id: '3', title: 'Ingresos', screen: 'IngresosScreen', icon: 'dollar' }, // Ejemplo de otro icono
-    //   ];
-
-
-
-
 
 
     const navigation = useNavigation();
+    const { isDarkMode, toggleTheme } = useTheme();
     const [ciclosBase, setCiclosBase] = useState([]);
     const [usuarioId, setUsuarioId] = useState(null);
     const [ispId, setIspId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [menuVisible, setMenuVisible] = useState(false);
-    const [isDarkMode, setIsDarkMode] = useState(false);
-    const [refreshFlag, setRefreshFlag] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [modoEdicion, setModoEdicion] = useState(false);
     const [cicloEditando, setCicloEditando] = useState(null);
     const [diaMes, setDiaMes] = useState('');
     const [detalle, setDetalle] = useState('');
     const [diasGracia, setDiasGracia] = useState('0');
-
-
-    const toggleTheme = async () => {
-        try {
-            const newTheme = isDarkMode ? 'light' : 'dark';
-            await AsyncStorage.setItem('@theme', newTheme); // Guarda el nuevo tema
-            setIsDarkMode(!isDarkMode); // Actualiza el estado
-        } catch (error) {
-            console.error('Error al cambiar el tema:', error);
-        }
-    };
 
     const handleLogout = async () => {
         try {
@@ -78,31 +38,6 @@ const BaseCicloScreen = () => {
 
 
 
-    // Cargar el tema desde AsyncStorage al montar el componente
-    useEffect(() => {
-        const loadTheme = async () => {
-            try {
-                const theme = await AsyncStorage.getItem('@theme');
-                setIsDarkMode(theme === 'dark');
-            } catch (error) {
-                console.error('Error al cargar el tema', error);
-            }
-        };
-        loadTheme();
-    }, []);    
-
-    // Refrescar el tema cada vez que el menú se abre o cierra, o cuando cambie refreshFlag
-    useEffect(() => {
-        const refreshTheme = async () => {
-            try {
-                const theme = await AsyncStorage.getItem('@theme');
-                setIsDarkMode(theme === 'dark');
-            } catch (error) {
-                console.error('Error al cargar el tema', error);
-            }
-        };
-        refreshTheme();
-    }, [menuVisible, refreshFlag]);
 
     useEffect(() => {
         const obtenerDatosUsuarioYFetchCiclos = async () => {
@@ -258,14 +193,28 @@ const BaseCicloScreen = () => {
         }
     }, []);
 
-    const openAddModal = () => {
+    const openAddModal = useCallback(() => {
         setModoEdicion(false);
         setCicloEditando(null);
         setDiaMes('');
         setDetalle('');
         setDiasGracia('0');
         setModalVisible(true);
-    };
+    }, []);
+
+    const botones = useMemo(() => [
+        { id: '4', screen: null, action: () => setMenuVisible(true), icon: 'bars' },
+        { id: '5', screen: 'BusquedaScreen', icon: 'search' },
+        { id: '1', icon: 'plus', action: openAddModal },
+        { id: '2', title: 'Revisiones', screen: 'FacturasEnRevisionScreen', params: { estado: 'en_revision' } },
+        { id: '3', title: 'Ingresos', screen: 'IngresosScreen' },
+        {
+            id: '7',
+            screen: null,
+            icon: isDarkMode ? 'sun-o' : 'moon-o',
+            action: toggleTheme,
+        },
+    ], [isDarkMode, openAddModal, toggleTheme]);
 
     const renderItem = useCallback(({ item }) => (
         <TouchableOpacity
